@@ -1,0 +1,64 @@
+plugins {
+    id 'java'
+}
+
+group 'org.wehi'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    google()
+    maven {
+        url 'https://maven.scijava.org/content/repositories/releases'
+    }
+    mavenCentral()
+//    maven {
+//        url 'http://maven.imagej.net/content/repositories/releases'
+//    }
+//    maven {
+//        url 'https://artifacts.openmicroscopy.org/artifactory/ome.releases/'
+//    }
+//    maven {
+//        url 'https://repo.boundlessgeo.com/main/'
+//    }
+}
+
+dependencies {
+    compile 'io.github.qupath:qupath-core:0.3.0'
+    compile 'io.github.qupath:qupath-gui-fx:0.3.0'
+    compile 'io.github.qupath:qupath-core-processing:0.3.0'
+//    compile 'ome:bio-formats_plugins:6.5.1'
+//    compile 'ome:formats-api:6.5.1'
+//    compile 'ome:formats-bsd:6.5.1'
+//    compile  group: 'edu.ucar', name: 'cdm', version: '4.6.13'
+//    compile 'sc.fiji:Stitching_:3.1.8'
+
+    // Need for the testing
+    String javaFxVersion = '11'
+    implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'win'
+    implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'mac'
+    implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'linux'
+    implementation group: 'org.openjfx', name: 'javafx-controls', version: javaFxVersion, classifier: 'win'
+    implementation group: 'org.openjfx', name: 'javafx-controls', version: javaFxVersion, classifier: 'mac'
+    implementation group: 'org.openjfx', name: 'javafx-controls', version: javaFxVersion, classifier: 'linux'
+    implementation group: 'org.openjfx', name: 'javafx-fxml', version: javaFxVersion, classifier: 'win'
+    implementation group: 'org.openjfx', name: 'javafx-fxml', version: javaFxVersion, classifier: 'mac'
+    implementation group: 'org.openjfx', name: 'javafx-fxml', version: javaFxVersion, classifier: 'linux'
+    implementation group: 'org.openjfx', name: 'javafx-graphics', version: javaFxVersion, classifier: 'win'
+    implementation group: 'org.openjfx', name: 'javafx-graphics', version: javaFxVersion, classifier: 'mac'
+    implementation group: 'org.openjfx', name: 'javafx-graphics', version: javaFxVersion, classifier: 'linux'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class' : ''
+        attributes 'Implementation-Title': 'MIBI Extension',
+                'Implementation-Version': '0.0.1'
+    }
+    destinationDirectory = file("$rootDir/output")
+    archiveName 'qupath-MIBI-extension.jar'
+}

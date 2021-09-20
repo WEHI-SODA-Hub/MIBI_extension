@@ -1,0 +1,15 @@
+mibi/stitch/NoDirectoryException.java
+ mibi.stitch.NoDirectoryException
+mibi/gui/NodeTools.java
+ mibi.gui.NodeTools
+mibi/stitch/GridStitchMacroOptions.java
+ mibi.stitch.GridStitchMacroOptions
+ mibi.stitch.GridStitchMacroOptions$ComputationParameter
+ mibi.stitch.GridStitchMacroOptions$FusionMethod
+ mibi.stitch.GridStitchMacroOptions$ImageOutput
+ mibi.stitch.GridStitchMacroOptions$Type
+mibi/stitch/GridStitchWindow.java
+ mibi.stitch.GridStitchWindow
+ mibi.stitch.GridStitchWindow$1
+ mibi.stitch.GridStitchWindow$2
+ mibi.stitch.GridStitchWindow$3

@@ -1,0 +1,10 @@
+mibi/gui/TestNumericalTextField.java
+ mibi.gui.TestNumericalTextField
+mibi/stitch/TestGridStitchWindowMain.java
+ mibi.stitch.TestGridStitchWindowMain
+mibi/gui/TestNumericalTextFieldMain.java
+ mibi.gui.TestNumericalTextFieldMain
+mibi/stitch/TestGridStitchMacroOptions.java
+ mibi.stitch.TestGridStitchMacroOptions
+mibi/stitch/TestGridStitchWindow.java
+ mibi.stitch.TestGridStitchWindow
