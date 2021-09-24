@@ -1,5 +1,7 @@
 package mibi.stitch;
 
+import ij.IJ;
+import ij.macro.Interpreter;
 import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
 import javafx.geometry.Orientation;
@@ -8,6 +10,8 @@ import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import static ij.IJ.saveAs;
 import static mibi.gui.NodeTools.*;
 
 import mibi.gui.NodeTools;
@@ -99,6 +103,7 @@ public class GridStitchWindow implements Runnable {
             File pathOut = Dialogs.promptForDirectory(new File(System.getProperty("user.dir")));
             if (pathOut != null && pathOut.isDirectory()){
                 directoryTextField.setText(pathOut.getAbsolutePath());
+                options.setDirectory(pathOut);
             }
         });
         HBox directoryHBox = createHBox(directoryTextField, directoryButton);
@@ -215,12 +220,43 @@ public class GridStitchWindow implements Runnable {
         gridPane.add(runButton, col1, i++, 2, 1);
 
         runButton.setOnAction(e -> {
+            if (options.getDirectory()==null){
+                Dialogs.showErrorMessage(TITLE, "Please select a directory");
+                return;
+            }
+
             // Shouldn't have to worry about null pointer
-//            options.setType(typeComboBox.getValue());
-//            options.setWidth(Integer.parseUnsignedInt(widthTextField.getText()));
-//            options.setHeight(Integer.parseUnsignedInt(heightTextField.getText()));
-//            options.setTileOverlap(Double.parseDouble(overlapTextField.getText()));
-//            options.setFirstFileIndex(Integer.parseUnsignedInt(firstFileIndexTextField.getText()));
+            options.setType(typeComboBox.getValue());
+            options.setWidth(Integer.parseUnsignedInt(widthTextField.getText()));
+            options.setHeight(Integer.parseUnsignedInt(heightTextField.getText()));
+            options.setTileOverlap(Double.parseDouble(overlapTextField.getText()));
+            options.setFirstFileIndex(Integer.parseUnsignedInt(firstFileIndexTextField.getText()));
+            options.setFilenamesRegex(fileNamesTextField.getText());
+            options.setTextFilename(textFileNameTextField.getText());
+            options.setFusedImageName(outputNameTextField.getText());
+            options.setFusionMethod(fusionMethodComboBox.getValue());
+
+            options.setRegressionThreshold(Double.parseDouble(regressionThresholdTextField.getText()));
+            options.setMaxAvgDisplacementThreshold(Double.parseDouble(maxAvgDisplacementThresholdTextField.getText()));
+            options.setAbsoluteDisplacementThreshold(Double.parseDouble(absDisplacementThresholdTextField.getText()));
+
+            options.setAddTilesAsROI(addToROICheckBox.isSelected());
+            options.setComputeOverlap(computeOverlapCheckBox.isSelected());
+            options.setInvertXCoordinates(invertXCheckBox.isSelected());
+            options.setInvertYCoordinates(invertYCheckBox.isSelected());
+            options.setIgnoreZStagePosition(ignoreZStageCheckBox.isSelected());
+            options.setSubpixelAccuracy(subPixelAccuracyCheckBox.isSelected());
+
+            // Maybe add in future
+//            options.setDownSampleTiles(sample);
+//            options.setDisplayFusion(displa);
+//            options.setImageOutput(i);
+            options.setUseVirtualInputImages(virtualCheckBox.isSelected());
+            options.setComputationParameter(computationParameterComboBox.getValue());
+
+            // Need to actually run the script
+            String command = options.toString();
+            System.out.println(command);
 
         });
     }

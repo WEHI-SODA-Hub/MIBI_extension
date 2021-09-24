@@ -21,6 +21,9 @@ repositories {
 //    maven {
 //        url 'https://repo.boundlessgeo.com/main/'
 //    }
+    maven {
+        url 'https://maven.scijava.org/content/groups/public'
+    }
 }
 
 dependencies {
@@ -32,6 +35,9 @@ dependencies {
 //    compile 'ome:formats-bsd:6.5.1'
 //    compile  group: 'edu.ucar', name: 'cdm', version: '4.6.13'
 //    compile 'sc.fiji:Stitching_:3.1.8'
+    // https://mvnrepository.com/artifact/sc.fiji/Stitching_
+    implementation group: 'sc.fiji', name: 'Stitching_', version: '3.1.6'
+
 
     // Need for the testing
     String javaFxVersion = '11'

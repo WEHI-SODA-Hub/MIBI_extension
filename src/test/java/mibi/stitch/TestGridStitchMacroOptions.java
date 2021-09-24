@@ -16,11 +16,7 @@ public class TestGridStitchMacroOptions {
         gs.setWidth(1);
         gs.setHeight(2);
 
-        try {
-            System.out.println(gs.getFormattedString());
-        } catch (NoDirectoryException e){
-            e.printStackTrace();
-        }
+        System.out.println(gs.toString());
 
 
     }

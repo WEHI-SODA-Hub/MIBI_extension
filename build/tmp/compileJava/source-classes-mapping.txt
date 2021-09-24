@@ -1,5 +1,3 @@
-mibi/stitch/NoDirectoryException.java
- mibi.stitch.NoDirectoryException
 mibi/gui/NodeTools.java
  mibi.gui.NodeTools
 mibi/stitch/GridStitchMacroOptions.java

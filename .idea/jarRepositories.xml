@@ -81,5 +81,10 @@
       <option name="name" value="maven4" />
       <option name="url" value="https://mvnrepository.com/artifact/edu.ucar/cdm" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="maven2" />
+      <option name="name" value="maven2" />
+      <option name="url" value="https://maven.scijava.org/content/groups/public" />
+    </remote-repository>
   </component>
 </project>

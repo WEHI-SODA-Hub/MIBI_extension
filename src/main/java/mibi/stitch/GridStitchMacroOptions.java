@@ -51,11 +51,8 @@ public class GridStitchMacroOptions {
     private ComputationParameter computationParameter = ComputationParameter.SAVE_MEMORY;
     private ImageOutput imageOutput = ImageOutput.DISPLAY;
 
-
-    public String getFormattedString() throws NoDirectoryException {
-        if (directory == null){
-            throw new NoDirectoryException("Directory was not selected");
-        }
+    @Override
+    public String toString(){
 
         StringBuilder sb = new StringBuilder();
         sb.append("run(");
