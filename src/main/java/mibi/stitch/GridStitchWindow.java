@@ -1,6 +1,8 @@
 package mibi.stitch;
 
 import ij.IJ;
+import ij.ImageJ;
+import ij.ImagePlus;
 import ij.macro.Interpreter;
 import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
@@ -9,8 +11,11 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import static ij.IJ.runMacroFile;
 import static ij.IJ.saveAs;
 import static mibi.gui.NodeTools.*;
 
@@ -19,8 +24,13 @@ import mibi.stitch.GridStitchMacroOptions.Type;
 import mibi.stitch.GridStitchMacroOptions.FusionMethod;
 import mibi.stitch.GridStitchMacroOptions.ComputationParameter;
 import org.controlsfx.control.spreadsheet.StringConverterWithFormat;
+import qupath.imagej.gui.IJExtension;
+import qupath.imagej.gui.ImageJMacroRunner;
+import qupath.imagej.tools.IJTools;
+import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
 
+import javax.swing.*;
 import java.io.File;
 import java.util.Arrays;
 
@@ -99,8 +109,9 @@ public class GridStitchWindow implements Runnable {
         TextField directoryTextField = new TextField();
         directoryTextField.setEditable(false);
         Button directoryButton = new Button("Browse");
+        DirectoryChooser dirChooser = new DirectoryChooser();
         directoryButton.setOnAction(e -> {
-            File pathOut = Dialogs.promptForDirectory(new File(System.getProperty("user.dir")));
+            File pathOut = dirChooser.showDialog(stage);
             if (pathOut != null && pathOut.isDirectory()){
                 directoryTextField.setText(pathOut.getAbsolutePath());
                 options.setDirectory(pathOut);
@@ -219,7 +230,15 @@ public class GridStitchWindow implements Runnable {
         runButton.setMaxWidth(Double.MAX_VALUE);
         gridPane.add(runButton, col1, i++, 2, 1);
 
+        ImageJ ij = IJExtension.getImageJInstance();
+        ij.setVisible(false);
+        IJ.debugMode = false;
+        Interpreter interpreter = new Interpreter();
+        Interpreter.batchMode = true;
+
+
         runButton.setOnAction(e -> {
+
             if (options.getDirectory()==null){
                 Dialogs.showErrorMessage(TITLE, "Please select a directory");
                 return;
@@ -251,12 +270,27 @@ public class GridStitchWindow implements Runnable {
 //            options.setDownSampleTiles(sample);
 //            options.setDisplayFusion(displa);
 //            options.setImageOutput(i);
+
+            // Needs a better way to close log window.
+            String command = "setBatchMode(true);" + options.toString() + "if (isOpen(\"Log\")) {\n" +
+                    "         selectWindow(\"Log\");\n" +
+                    "         run(\"Close\" );\n" +
+                    "    }";
+            System.out.println(command);
             options.setUseVirtualInputImages(virtualCheckBox.isSelected());
             options.setComputationParameter(computationParameterComboBox.getValue());
 
-            // Need to actually run the script
-            String command = options.toString();
-            System.out.println(command);
+
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    interpreter.run(command);
+                    Dialogs.showInfoNotification(TITLE, "Saved fused image" );
+                } catch (Exception ex){
+                    ex.printStackTrace();
+                }
+                }
+            );
+
 
         });
     }

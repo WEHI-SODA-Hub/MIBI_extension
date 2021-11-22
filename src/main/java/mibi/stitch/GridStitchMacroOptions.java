@@ -9,20 +9,20 @@ public class GridStitchMacroOptions {
     private Type type = Type.GRID_COL_COL;
 
     // The grid size
-    private int width = 2;
-    private int height = 4;
+    private int width = 3;
+    private int height = 3;
 
     // The tile overlap
     private double tileOverlap = 50;
 
     // first file index
-    private int firstFileIndex = 1;
+    private int firstFileIndex = 0;
 
     // The directory where images are stored;
     private File directory = null;
 
     // The pattern each filename follows
-    private String filenamesRegex = "image_{i}.tif";
+    private String filenamesRegex = "image{i}.tif";
 
     // Output text filename
     private String textFilename = "TileConfiguration.txt";
