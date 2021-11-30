@@ -1,7 +1,5 @@
 mibi/MIBIExtension.java
  mibi.MIBIExtension
-mibi/gui/NodeTools.java
- mibi.gui.NodeTools
 mibi/stitch/GridStitchWindow.java
  mibi.stitch.GridStitchWindow
  mibi.stitch.GridStitchWindow$1
@@ -13,3 +11,14 @@ mibi/stitch/GridStitchMacroOptions.java
  mibi.stitch.GridStitchMacroOptions$FusionMethod
  mibi.stitch.GridStitchMacroOptions$ImageOutput
  mibi.stitch.GridStitchMacroOptions$Type
+mibi/gui/NodeTools.java
+ mibi.gui.NodeTools
+mibi/segmentation/SegmentationWindow.java
+ mibi.segmentation.SegmentationWindow
+mibi/segmentation/DeepCell2D.java
+ mibi.segmentation.DeepCell2D
+ mibi.segmentation.DeepCell2D$PotentialNucleus
+mibi/segmentation/DeepCellToolbox.java
+ mibi.segmentation.DeepCellToolbox
+ mibi.segmentation.DeepCellToolbox$SegmentationArgs
+ mibi.segmentation.DeepCellToolbox$SegmentationArgs$Builder
