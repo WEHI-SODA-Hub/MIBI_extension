@@ -1,5 +1,6 @@
 package mibi.segmentation;
 
+import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgproc;
@@ -10,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.tensorflow.SavedModelBundle;
-import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.proto.framework.SignatureDef;
 import org.tensorflow.proto.framework.TensorInfo;
@@ -22,7 +22,6 @@ import qupath.lib.images.servers.ColorTransforms.ColorTransform;
 
 import qupath.lib.images.servers.PixelCalibration;
 import qupath.lib.images.servers.PixelType;
-import qupath.lib.objects.PathObject;
 import qupath.lib.regions.Padding;
 import qupath.lib.regions.RegionRequest;
 import qupath.lib.roi.GeometryTools;
@@ -30,8 +29,6 @@ import qupath.lib.roi.interfaces.ROI;
 import qupath.opencv.ops.ImageDataOp;
 import qupath.opencv.ops.ImageOp;
 import qupath.opencv.ops.ImageOps;
-import qupath.opencv.tools.OpenCVTools;
-import mibi.segmentation.DeepCellToolbox.SegmentationArgs;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -194,19 +191,20 @@ public class DeepCell2D {
                     .run();
 
             var formattedOutput = formatOutput(output);
-
+            var labelledImages = postProcess(formattedOutput);
         }
 
         return null;
     }
 
-    // Unlike the mesmer python implementation, this will always compute both cell and nuclear because cbs.
 
-    private Object postProcess(HashMap<String, List<Tensor>> formattedOutput,
-                               SegmentationArgs wholeCellArgs, SegmentationArgs nuclearArgs){
+    // TODO: Check for which compartment user wants
+    // This will process the raw outputs of the model into labelled images
+    private Object postProcess(HashMap<String, List<Mat>> formattedOutput){
 
-        var wholeCellMat = DeepCellToolbox.deepWatershed(formattedOutput.get(wholeCellKey), wholeCellArgs);
-        var nuclearMat = DeepCellToolbox.deepWatershed(formattedOutput.get(nuclearKey), nuclearArgs);
+        var deepWatershed = DeepWatershed.builder().build();
+        var wholeCellMat = deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey));
+        var nuclearMat = deepWatershed.deepWatershed(formattedOutput.get(nuclearKey));
 
         return null;
     }
@@ -216,22 +214,29 @@ public class DeepCell2D {
     private static final String wholeCellKey = "whole-cell";
     private static final String nuclearKey = "nuclear";
 
-    private HashMap<String, List<Tensor>> formatOutput(List<Tensor> output){
+    private HashMap<String, List<Mat>> formatOutput(List<Tensor> output){
         final int expectedOutput = 4;
 
         if (output.size() != expectedOutput){
-            // TODO: Exception
+            throw new RuntimeException("Expected 4 outputs from model but got "+output.size());
         }
-        HashMap<String, List<Tensor>> map = new HashMap<>();
 
-        var wholeCell = new ArrayList<Tensor>();
-        wholeCell.add(output.get(0));
-        wholeCell.add(output.get(1));
+        // Convert all the Tensors to Opencv Mats
+        var output1 = TensorFlowTools.convertToMats(output.get(0)).get(0);
+        var output2 = TensorFlowTools.convertToMats(output.get(1)).get(0);
+        var output3 = TensorFlowTools.convertToMats(output.get(2)).get(0);
+        var output4 = TensorFlowTools.convertToMats(output.get(3)).get(0);
+
+        HashMap<String, List<Mat>> map = new HashMap<>();
+
+        var wholeCell = new ArrayList<Mat>();
+        wholeCell.add(output1);
+        wholeCell.add(output2);
         map.put(wholeCellKey, wholeCell);
 
-        var nuclear = new ArrayList<Tensor>();
-        nuclear.add(output.get(2));
-        nuclear.add(output.get(3));
+        var nuclear = new ArrayList<Mat>();
+        nuclear.add(output3);
+        nuclear.add(output4);
         map.put(nuclearKey, nuclear);
 
         return map;

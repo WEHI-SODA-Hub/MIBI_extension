@@ -84,8 +84,11 @@ public class TensorFlowModelLoadTest implements Runnable  {
 //                var output = model.getPredictionFunction().predict(tensor);
                 System.out.println(out.get(0).shape());
                 System.out.println(out.get(1).shape());
-                System.out.println(out.get(2).shape());
-                System.out.println(out.get(3).shape());
+//                System.out.println(out.get(2).shape());
+//                System.out.println(out.get(3).shape());
+                System.out.println(TensorFlowTools.convertToMats(out.get(0)).get(0));
+                System.out.println(TensorFlowTools.convertToMats(out.get(1)).get(0));
+
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
