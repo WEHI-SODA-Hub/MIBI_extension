@@ -26,6 +26,7 @@ import qupath.lib.regions.Padding;
 import qupath.lib.regions.RegionRequest;
 import qupath.lib.roi.GeometryTools;
 import qupath.lib.roi.interfaces.ROI;
+import qupath.opencv.WatershedNucleiCV;
 import qupath.opencv.ops.ImageDataOp;
 import qupath.opencv.ops.ImageOp;
 import qupath.opencv.ops.ImageOps;
@@ -175,6 +176,7 @@ public class DeepCell2D {
 //
             // Ensure we have a Mat of the right size. If not, create a padding around to make a mat of the correct size
             var padding = ensureSize(mat, tileWidth, tileHeight, opencv_core.BORDER_REFLECT);
+
 
             // Convert the mat to a tensor
             var input = TensorFlowTools.convertToTensor(mat);

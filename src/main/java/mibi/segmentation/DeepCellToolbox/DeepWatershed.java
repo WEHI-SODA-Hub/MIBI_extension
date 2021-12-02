@@ -2,15 +2,24 @@ package mibi.segmentation.DeepCellToolbox;
 
 
 import org.bytedeco.opencv.opencv_core.Mat;
+//import org.bytedeco.opencv.presets.opencv_imgproc;
+import org.bytedeco.opencv.global.opencv_imgproc;
+import org.bytedeco.opencv.opencv_core.Size;
 
 import java.util.List;
 
+import static org.bytedeco.opencv.global.opencv_core.*;
+import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_ELLIPSE;
+import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_RECT;
+
 public class DeepWatershed {
 
+    enum MaximaAlgorithms {
+        PEAK_LOCAL_MAX,
+        H_MAX
+    }
 
-    private static final String[] possibleAlgos = new String[]{"h_maxima", "peak_local_max"};
-
-    private double radius;
+    private int radius;
     private double maxima_threshold;
     private double interior_threshold;
     private double maxima_smooth;
@@ -20,7 +29,8 @@ public class DeepWatershed {
     private double label_erosion;
     private double small_objects_threshold;
     private double fill_holes_threshold;
-    private String maxima_algorithm;
+    private int pixel_expansion;
+    private MaximaAlgorithms maxima_algorithm;
 
     public Object deepWatershed(List<Mat> input){
 
@@ -39,8 +49,35 @@ public class DeepWatershed {
             throw new RuntimeException("The inputs do not have the correct dimensions");
         }
 
-        
 
+        // TODO: Not entirely sure whether to have a similar loop as the "line 155 for maxima, interior in zip(maximas, interiors):"
+        // TODO: in the deep_watershed.py
+
+        if (maxima_smooth > 0) {
+            opencv_imgproc.GaussianBlur(maxima, maxima, new Size(0, 0), maxima_smooth, maxima_smooth, BORDER_REFLECT);
+        }
+        if (interior_smooth > 0) {
+            opencv_imgproc.GaussianBlur(interior, interior, new Size(0, 0), interior_smooth, interior_smooth, BORDER_REFLECT);
+        }
+
+        if (pixel_expansion > 0){
+
+            // TODO: Currently no 3D support. Only 2D hence default is square
+            Mat element = opencv_imgproc.getStructuringElement(MORPH_RECT,
+                                            new  Size(2*pixel_expansion + 1, 2*pixel_expansion+1));
+            opencv_imgproc.dilate(interior, interior, element);
+        }
+
+
+        // TODO: Currently no sophisticated Local Maxima exists within OpenCV nor QuPath. Stick with the simple method
+        //  done by Pete. This may not be great for results. Probably have to change
+
+        Mat localMaxima = new Mat();
+        Mat strel = opencv_imgproc.getStructuringElement(MORPH_ELLIPSE, new Size(radius, radius));
+        opencv_imgproc.dilate(interior, localMaxima, strel);
+        compare(interior, localMaxima, localMaxima, CMP_EQ);
+
+        opencv_imgproc.dilate(localMaxima, localMaxima, opencv_imgproc.getStructuringElement(MORPH_ELLIPSE, new Size(radius * 2, radius * 2)));
 
 
         return null;
@@ -59,19 +96,21 @@ public class DeepWatershed {
         private double interior_smooth = 2;
         private double small_objects_threshold = 15;
         private double fill_holes_threshold = 15;
-        private double radius = 2;
+        private int radius = 2;
 
         private int maxima_index = 0;
         private int interior_index = 1;
 
         private double label_erosion = 0;
-        // Will ignore pixel_expansion
-//        private double pixel_expansion;
-        private String maxima_algorithm = "h_maxima";
 
+        private int pixel_expansion = 0;
+        private MaximaAlgorithms maxima_algorithm = MaximaAlgorithms.H_MAX;
 
+        public static Builder builder(){
+            return new Builder();
+        }
 
-        public Builder radius(double radius){
+        public Builder radius(int radius){
             this.radius = radius;
             return this;
         }
@@ -119,8 +158,12 @@ public class DeepWatershed {
             this.fill_holes_threshold = fill_holes_threshold;
             return this;
         }
-        private Builder h_maxima_algorithm(String maxima_algorithm){
+        private Builder h_maxima_algorithm(MaximaAlgorithms maxima_algorithm){
             this.maxima_algorithm = maxima_algorithm;
+            return this;
+        }
+        private Builder pixel_expansion(int pixel_expansion){
+            this.pixel_expansion = pixel_expansion;
             return this;
         }
 
@@ -136,12 +179,8 @@ public class DeepWatershed {
             deepWatershed.label_erosion = this.label_erosion;
             deepWatershed.small_objects_threshold = this.small_objects_threshold;
             deepWatershed.fill_holes_threshold = this.fill_holes_threshold;
-
-            if (this.maxima_algorithm == possibleAlgos[0] || this.maxima_algorithm == possibleAlgos[1]){
-                deepWatershed.maxima_algorithm = this.maxima_algorithm;
-            } else {
-                throw new RuntimeException("Unrecognised maxima algorithm " + this.maxima_algorithm);
-            }
+            deepWatershed.pixel_expansion = pixel_expansion;
+            deepWatershed.maxima_algorithm = this.maxima_algorithm;
             return deepWatershed;
         }
     }

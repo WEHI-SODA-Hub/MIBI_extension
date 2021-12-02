@@ -4,7 +4,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import org.bytedeco.opencv.global.opencv_imgcodecs;
+import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.Size;
+import org.opencv.highgui.HighGui;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import qupath.ext.tensorflow.TensorFlowTools;
@@ -27,6 +32,8 @@ import java.util.Arrays;
 import java.util.List;
 
 //import static qupath.lib.scripting.QP.getCurrentImageData;
+import static org.bytedeco.opencv.global.opencv_core.BORDER_REFLECT;
+import static org.bytedeco.opencv.global.opencv_core.extractChannel;
 import static qupath.lib.gui.scripting.QPEx.getCurrentImageData;
 
 public class TensorFlowModelLoadTest implements Runnable  {
@@ -72,9 +79,12 @@ public class TensorFlowModelLoadTest implements Runnable  {
             var mask = roi == null ? null : roi.getGeometry();
 
             try {
+//                System.out.println();
                 Mat mat = op.apply(imageData, request);
                 Tensor tensor = TensorFlowTools.convertToTensor(mat);
                 String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
+
+                System.out.println(tensor.shape());
 
                 var model = SavedModelBundle.load(modelPath);
                 Session sess = model.session();
@@ -82,12 +92,33 @@ public class TensorFlowModelLoadTest implements Runnable  {
                 var out = sess.runner().feed("serving_default_input_0:0", tensor).fetch("StatefulPartitionedCall:0").fetch("StatefulPartitionedCall:1").fetch("StatefulPartitionedCall:2").fetch("StatefulPartitionedCall:3").run();
 //                var model = TensorFlowTools.createDnnModel(modelPath);
 //                var output = model.getPredictionFunction().predict(tensor);
-                System.out.println(out.get(0).shape());
-                System.out.println(out.get(1).shape());
+//                System.out.println(out.get(0).shape());
+//                System.out.println(out.get(1).shape());
 //                System.out.println(out.get(2).shape());
 //                System.out.println(out.get(3).shape());
-                System.out.println(TensorFlowTools.convertToMats(out.get(0)).get(0));
-                System.out.println(TensorFlowTools.convertToMats(out.get(1)).get(0));
+                var maxima = TensorFlowTools.convertToMats(out.get(0)).get(0);
+                var interior = TensorFlowTools.convertToMats(out.get(1)).get(0);
+
+                String maximaPath = "/Users/yokote.k/Desktop/MIBI/model_output/maxima.tif";
+                opencv_imgcodecs.imwrite(maximaPath, maxima);
+
+                String interiorPath = "/Users/yokote.k/Desktop/MIBI/model_output/interior.tiff";
+                extractChannel(interior, interior, 0);
+                opencv_imgcodecs.imwrite(interiorPath, interior);
+
+//                Mat blurredMaxima = new Mat();
+//                Mat blurredInterior = new Mat();
+//
+//                double interior_smooth = 2;
+//
+//
+////                opencv_imgproc.GaussianBlur(maxima, blurredMaxima, new Size(0,0), maxima_smooth, maxima_smooth, BORDER_REFLECT);
+//                opencv_imgproc.GaussianBlur(interior, blurredInterior, new Size(0,0), interior_smooth, interior_smooth, BORDER_REFLECT);
+//
+//                System.out.println(blurredInterior.channels());
+
+//                System.out.println(output0.size());
+
 
             } catch (IOException ioException) {
                 ioException.printStackTrace();

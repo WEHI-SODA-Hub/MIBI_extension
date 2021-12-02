@@ -1,5 +1,5 @@
-mibi/gui/TestNumericalTextField.java
- mibi.gui.TestNumericalTextField
+mibi/segmentation/TensorFlowTest.java
+ mibi.segmentation.TensorFlowTest
 mibi/stitch/TestGridStitchMacroOptions.java
  mibi.stitch.TestGridStitchMacroOptions
 mibi/QuPathTestRun.java
@@ -10,5 +10,5 @@ mibi/gui/TestNumericalTextFieldMain.java
  mibi.gui.TestNumericalTextFieldMain
 mibi/stitch/TestGridStitchWindow.java
  mibi.stitch.TestGridStitchWindow
-mibi/segmentation/TensorFlowTest.java
- mibi.segmentation.TensorFlowTest
+mibi/gui/TestNumericalTextField.java
+ mibi.gui.TestNumericalTextField

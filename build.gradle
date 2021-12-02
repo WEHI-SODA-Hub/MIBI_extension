@@ -15,30 +15,27 @@ allprojects {
 //        maven {
 //            url 'http://maven.imagej.net/content/repositories/releases'
 //        }
-//    //    maven {
-//    //        url 'https://artifacts.openmicroscopy.org/artifactory/ome.releases/'
-//    //    }
-        maven {
-            url 'https://mvnrepository.com/artifact/org.apache.commons/commons-math3'
-        }
+//        maven {
+//            url 'https://mvnrepository.com/artifact/'
+//        }
+//        maven {
+//            url 'https://mvnrepository.com/artifact/org.apache.commons/commons-math3'
+//        }
 //        maven {
 //            url 'https://maven.scijava.org/content/groups/public'
 //        }
-
-
-        maven { url 'https://jitpack.io' }
     }
 }
 
 dependencies {
     implementation 'org.bytedeco:gradle-javacpp:1.5.6'
-    implementation "org.bytedeco:javacv-platform:1.5.6"
+//    implementation "org.bytedeco:javacv-platform:1.5.6"
 
     implementation files("/Users/yokote.k/QuPath/v0.3/extensions/qupath-extension-tensorflow-0.3.0-all.jar")
+    // https://mvnrepository.com/artifact/opencv/opencv
 
 //    implementation group: 'org.tensorflow', name: 'tensorflow', version: '1.15.0'
 //    implementation group: 'org.tensorflow', name: 'tensorflow-core-platform', version: '0.3.3'
-
     implementation fileTree(dir: '/Users/yokote.k/Desktop/QuPath-0.3.1-SNAPSHOT.app/Contents/app/', include: '*.jar')
 //    implementation group: 'org.bytedeco', name: 'tensorflow-platform', version: '1.15.5-1.5.6'
 //    implementation group: 'org.tensorflow', name: 'tensorflow-core-platform', version: '0.3.3'
