@@ -4,10 +4,15 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import org.bytedeco.javacpp.DoublePointer;
+import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.Point;
+import org.bytedeco.opencv.opencv_core.Scalar;
 import org.bytedeco.opencv.opencv_core.Size;
+import org.bytedeco.opencv.opencv_imgproc.CLAHE;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.tensorflow.Session;
@@ -25,6 +30,8 @@ import org.tensorflow.SavedModelBundle;
 import qupath.opencv.ops.ImageDataOp;
 import qupath.opencv.ops.ImageOp;
 import qupath.opencv.ops.ImageOps;
+import qupath.opencv.tools.OpenCVTools;
+import qupath.opencv.tools.ProcessingCV;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,8 +39,7 @@ import java.util.Arrays;
 import java.util.List;
 
 //import static qupath.lib.scripting.QP.getCurrentImageData;
-import static org.bytedeco.opencv.global.opencv_core.BORDER_REFLECT;
-import static org.bytedeco.opencv.global.opencv_core.extractChannel;
+import static org.bytedeco.opencv.global.opencv_core.*;
 import static qupath.lib.gui.scripting.QPEx.getCurrentImageData;
 
 public class TensorFlowModelLoadTest implements Runnable  {
@@ -64,14 +70,17 @@ public class TensorFlowModelLoadTest implements Runnable  {
             var imageData = quPathGUI.getImageData();
             var resolution = imageData.getServer().getPixelCalibration();
             mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
+            mergedOps.add(DeepCellPreprocessOp.preprocess());
 
-            var channels_ind = new String[] {"2021-08-04_11MH0691_stitched-nuclei.tif", "2021-08-04_11MH0691_stitched-panck.tiff"};
+            var channels_ind = new String[] {"dsDNA", "Beta-Tubulin"};
             var channels = Arrays.stream(channels_ind)
                     .map(ColorTransforms::createChannelExtractor)
                     .toArray(ColorTransforms.ColorTransform[]::new);
 
             op = ImageOps.buildImageDataOp(channels)
                     .appendOps(mergedOps.toArray(ImageOp[]::new));
+
+
 
             var opServer = ImageOps.buildServer(imageData, op, resolution, tileWidth, tileHeight);
             var request = RegionRequest.createInstance(opServer);
@@ -84,25 +93,27 @@ public class TensorFlowModelLoadTest implements Runnable  {
                 Tensor tensor = TensorFlowTools.convertToTensor(mat);
                 String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
 
-                System.out.println(tensor.shape());
-
                 var model = SavedModelBundle.load(modelPath);
                 Session sess = model.session();
 
-                var out = sess.runner().feed("serving_default_input_0:0", tensor).fetch("StatefulPartitionedCall:0").fetch("StatefulPartitionedCall:1").fetch("StatefulPartitionedCall:2").fetch("StatefulPartitionedCall:3").run();
-//                var model = TensorFlowTools.createDnnModel(modelPath);
-//                var output = model.getPredictionFunction().predict(tensor);
-//                System.out.println(out.get(0).shape());
-//                System.out.println(out.get(1).shape());
-//                System.out.println(out.get(2).shape());
-//                System.out.println(out.get(3).shape());
+                var out = sess.runner().feed("serving_default_input_0:0", tensor)
+                        .fetch("StatefulPartitionedCall:0")
+                        .fetch("StatefulPartitionedCall:1")
+                        .fetch("StatefulPartitionedCall:2")
+                        .fetch("StatefulPartitionedCall:3")
+                        .run();
+
                 var maxima = TensorFlowTools.convertToMats(out.get(0)).get(0);
                 var interior = TensorFlowTools.convertToMats(out.get(1)).get(0);
 
-                String maximaPath = "/Users/yokote.k/Desktop/MIBI/model_output/maxima.tif";
+
+                ProcessingCV.doWatershed(interior, maxima, true);
+
+
+                String maximaPath = "/Users/yokote.k/Desktop/MIBI/model_output/maxima_imgop.tif";
                 opencv_imgcodecs.imwrite(maximaPath, maxima);
 
-                String interiorPath = "/Users/yokote.k/Desktop/MIBI/model_output/interior.tiff";
+                String interiorPath = "/Users/yokote.k/Desktop/MIBI/model_output/interior_imgop.tiff";
                 extractChannel(interior, interior, 0);
                 opencv_imgcodecs.imwrite(interiorPath, interior);
 

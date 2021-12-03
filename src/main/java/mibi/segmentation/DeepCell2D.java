@@ -570,7 +570,7 @@ public class DeepCell2D {
 
 
             mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
-
+            mergedOps.add(new DeepCellPreprocessOp());
             // ImageOps.buildImageDataOp(channels) is the operation to extract the channels
             // Also includes any other image operations the user has specified
             deepCell2D.op = ImageOps.buildImageDataOp(channels)

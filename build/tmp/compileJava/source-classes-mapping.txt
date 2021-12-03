@@ -13,12 +13,14 @@ mibi/stitch/GridStitchWindow.java
  mibi.stitch.GridStitchWindow$1
  mibi.stitch.GridStitchWindow$2
  mibi.stitch.GridStitchWindow$3
+mibi/gui/NodeTools.java
+ mibi.gui.NodeTools
 mibi/segmentation/DeepCell2D.java
  mibi.segmentation.DeepCell2D
  mibi.segmentation.DeepCell2D$Builder
  mibi.segmentation.DeepCell2D$PotentialNucleus
-mibi/gui/NodeTools.java
- mibi.gui.NodeTools
+mibi/segmentation/DeepCellPreprocessOp.java
+ mibi.segmentation.DeepCellPreprocessOp
 mibi/MIBIExtension.java
  mibi.MIBIExtension
 mibi/segmentation/TensorFlowModelLoadTest.java
