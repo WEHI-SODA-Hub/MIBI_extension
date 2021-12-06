@@ -77,7 +77,10 @@ public class DeepWatershed {
         opencv_imgproc.dilate(interior, localMaxima, strel);
         compare(interior, localMaxima, localMaxima, CMP_EQ);
 
-        opencv_imgproc.dilate(localMaxima, localMaxima, opencv_imgproc.getStructuringElement(MORPH_ELLIPSE, new Size(radius * 2, radius * 2)));
+        opencv_imgproc.dilate(
+                localMaxima,
+                localMaxima,
+                opencv_imgproc.getStructuringElement(MORPH_ELLIPSE, new Size(radius * 2, radius * 2)));
 
 
         return null;

@@ -1,5 +1,6 @@
 package mibi;
 
+import mibi.segmentation.SegmentationWindow;
 import mibi.segmentation.TensorFlowModelLoadTest;
 import mibi.stitch.GridStitchWindow;
 

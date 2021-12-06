@@ -8,10 +8,7 @@ import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
-import org.bytedeco.opencv.opencv_core.Mat;
-import org.bytedeco.opencv.opencv_core.Point;
-import org.bytedeco.opencv.opencv_core.Scalar;
-import org.bytedeco.opencv.opencv_core.Size;
+import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_imgproc.CLAHE;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -40,6 +37,7 @@ import java.util.List;
 
 //import static qupath.lib.scripting.QP.getCurrentImageData;
 import static org.bytedeco.opencv.global.opencv_core.*;
+import static org.bytedeco.opencv.global.opencv_imgproc.*;
 import static qupath.lib.gui.scripting.QPEx.getCurrentImageData;
 
 public class TensorFlowModelLoadTest implements Runnable  {
@@ -107,15 +105,48 @@ public class TensorFlowModelLoadTest implements Runnable  {
                 var interior = TensorFlowTools.convertToMats(out.get(1)).get(0);
 
 
-                ProcessingCV.doWatershed(interior, maxima, true);
+                // Blur
+                // Format interior
+                extractChannel(interior, interior, 1);
+                GaussianBlur(interior, interior, new Size(0,0), 2, 2, BORDER_REFLECT);
+
+                // Get the imreconstruct
+                int radius = 2;
+                Mat mat5 = new Mat(maxima.size(), CV_32F, new Scalar(0.1));
+                Mat subtracted = new Mat();
+                opencv_core.subtract(maxima, mat5, subtracted);
+                ProcessingCV.morphologicalReconstruction(subtracted, maxima);
 
 
-                String maximaPath = "/Users/yokote.k/Desktop/MIBI/model_output/maxima_imgop.tif";
-                opencv_imgcodecs.imwrite(maximaPath, maxima);
+                Mat local_max = new Mat();
+                opencv_core.subtract(maxima, subtracted, local_max);
+                opencv_imgproc.threshold(local_max, local_max, 0.1, 1, CV_THRESH_BINARY);
 
-                String interiorPath = "/Users/yokote.k/Desktop/MIBI/model_output/interior_imgop.tiff";
-                extractChannel(interior, interior, 0);
-                opencv_imgcodecs.imwrite(interiorPath, interior);
+                Mat labels = new Mat();
+                local_max.convertTo(local_max, CV_8S);
+                opencv_imgproc.connectedComponents(local_max, labels);
+                labels.convertTo(labels, CV_32SC1);
+
+
+                interior.convertTo(interior, CV_8UC3);
+//                Mat channel1 = new Mat();
+//                interior.copyTo(channel1);
+//                Mat channel2 = new Mat();
+//                interior.copyTo(channel2);
+//                MatVector matvec = new MatVector();
+//                matvec.put(channel1, channel2, interior);
+//                opencv_core.merge(matvec, interior);
+
+
+//                opencv_imgproc.watershed(interior, labels);
+                ProcessingCV.doWatershed(interior, labels, true);
+
+                String labelsPath = "/Users/yokote.k/Desktop/MIBI/model_output/labels.tiff";
+                opencv_imgcodecs.imwrite(labelsPath, labels);
+
+//                opencv_imgcodecs.imwrite(subtractedPath, subtracted);
+//                opencv_imgcodecs.imwrite(reconstructedPath , maxima);
+
 
 //                Mat blurredMaxima = new Mat();
 //                Mat blurredInterior = new Mat();
