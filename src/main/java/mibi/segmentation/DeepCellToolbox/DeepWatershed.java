@@ -1,16 +1,33 @@
 package mibi.segmentation.DeepCellToolbox;
 
 
+import com.mchange.v1.db.sql.UnsupportedTypeException;
+import ij.process.FloatProcessor;
+import mibi.segmentation.CV_FLOAT;
+import org.bytedeco.javacpp.FloatPointer;
+import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.opencv_core.Mat;
-//import org.bytedeco.opencv.presets.opencv_imgproc;
+import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgproc;
+import org.bytedeco.opencv.opencv_core.Scalar;
 import org.bytedeco.opencv.opencv_core.Size;
+import ijopencv.opencv.MatImagePlusConverter;
+import qupath.opencv.tools.ProcessingCV;
+
+import inra.ijpb.morphology.Reconstruction;
 
 import java.util.List;
 
 import static org.bytedeco.opencv.global.opencv_core.*;
-import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_ELLIPSE;
-import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_RECT;
+import static org.bytedeco.opencv.global.opencv_imgproc.*;
+
+
+/**
+ * Used:
+ * https://github.com/joheras/IJ-OpenCV
+ * https://imagej.net/plugins/morpholibj
+ *
+ */
 
 public class DeepWatershed {
 
@@ -85,6 +102,88 @@ public class DeepWatershed {
 
         return null;
     }
+
+
+
+    public static void hMaxima(Mat image, Mat localMaxima, double h, int radius, double maxVal) throws UnsupportedTypeException {
+
+        if (!CV_FLOAT.isDtype(image.type())){
+            throw new UnsupportedTypeException("Image not of type FLOAT32 or FLOAT64");
+        }
+
+
+        var resolution = new Mat();
+        System.out.println(CV_FLOAT.getResolutionForDType(image.type()));
+        opencv_core.multiply(opencv_core.abs(image).asMat(),
+                new Mat(image.size(), image.type(),  new Scalar(2 * CV_FLOAT.getResolutionForDType(image.type()))),
+                resolution
+        );
+
+        var shifted_im = new Mat();
+        opencv_core.subtract(image, resolution, image);
+        opencv_core.subtract(image, new Mat(image.size(), image.type(), new Scalar(h)), shifted_im);
+
+
+        var rec_img = new Mat();
+        image.copyTo(rec_img);
+
+        var marker = makeFloatProcessor(shifted_im);
+        var mask = makeFloatProcessor(rec_img);
+        var reconstructed = Reconstruction.reconstructByDilation(marker, mask);
+
+        rec_img = toMat((FloatProcessor) reconstructed);
+
+
+
+
+//        imReconstruct(shifted_im, image, rec_img, radius);
+//        ProcessingCV.morphologicalReconstruction(shifted_im, rec_img);
+
+
+
+        String reconstructedPath = "/Users/yokote.k/Desktop/MIBI/model_output/reconstructed_imageJ.tiff";
+        opencv_imgcodecs.imwrite(reconstructedPath, rec_img);
+
+        var res_img = new Mat();
+        opencv_core.subtract(image, rec_img, res_img);
+
+        String subtractedPath = "/Users/yokote.k/Desktop/MIBI/model_output/subtracted.tiff";
+        opencv_imgcodecs.imwrite(subtractedPath, res_img);
+
+        opencv_imgproc.threshold(res_img, localMaxima, h, maxVal, CV_THRESH_BINARY);
+
+        res_img.deallocate();
+        shifted_im.deallocate();
+        rec_img.deallocate();
+        resolution.deallocate();
+    }
+
+
+
+
+    public static void imReconstruct(Mat marker, Mat mask, Mat reconstructed, int radius){
+        Mat strel = opencv_imgproc.getStructuringElement(MORPH_ELLIPSE, new Size(radius * 2+1, radius * 2+1));
+        Mat diff = new Mat();
+        Mat adjustedMarker = new Mat();
+        marker.copyTo(adjustedMarker);
+
+
+        while (true){
+            opencv_imgproc.dilate(adjustedMarker, reconstructed, strel);
+            bitwise_and(reconstructed, mask, reconstructed);
+
+            // Stopping criterion
+            bitwise_xor(reconstructed, adjustedMarker, diff);
+            if(countNonZero(diff) == 0) {
+                diff.deallocate();
+                adjustedMarker.deallocate();
+                return;
+            }
+            reconstructed.copyTo(adjustedMarker);
+        }
+
+    }
+
 
     public static Builder builder(){
         return new Builder();
@@ -186,5 +285,25 @@ public class DeepWatershed {
             deepWatershed.maxima_algorithm = this.maxima_algorithm;
             return deepWatershed;
         }
+    }
+
+    private static FloatProcessor makeFloatProcessor(Mat mat) {
+        if (mat.type() != opencv_core.CV_32FC1) {
+            throw new IllegalArgumentException("wrong Mat type: " + mat.type());
+        }
+        final int w = mat.cols();
+        final int h = mat.rows();
+        FloatProcessor fp = new FloatProcessor(w, h);
+        FloatPointer fptr = new FloatPointer(mat.data());
+        fptr.get((float[]) fp.getPixels());
+        fptr.close();
+        return fp;
+    }
+
+    public static Mat toMat(FloatProcessor cp) {
+        final int w = cp.getWidth();
+        final int h = cp.getHeight();
+        final float[] pixels = (float[]) cp.getPixels();
+        return new Mat(h, w, opencv_core.CV_32FC1, new FloatPointer(pixels));
     }
 }

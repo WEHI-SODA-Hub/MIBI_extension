@@ -1,9 +1,11 @@
 package mibi.segmentation;
+import com.mchange.v1.db.sql.UnsupportedTypeException;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgcodecs;
@@ -112,15 +114,27 @@ public class TensorFlowModelLoadTest implements Runnable  {
 
                 // Get the imreconstruct
                 int radius = 2;
-                Mat mat5 = new Mat(maxima.size(), CV_32F, new Scalar(0.1));
-                Mat subtracted = new Mat();
-                opencv_core.subtract(maxima, mat5, subtracted);
-                ProcessingCV.morphologicalReconstruction(subtracted, maxima);
-
-
                 Mat local_max = new Mat();
-                opencv_core.subtract(maxima, subtracted, local_max);
-                opencv_imgproc.threshold(local_max, local_max, 0.1, 1, CV_THRESH_BINARY);
+                DeepWatershed.hMaxima(maxima, local_max, 0.1, radius, 1);
+
+//                Mat mat_h = new Mat(maxima.size(), CV_32F, new Scalar(0.1));
+//                Mat subtracted = new Mat();
+//                opencv_core.subtract(maxima, mat_h, subtracted);
+//
+//
+//                Mat reconstructed = new Mat();
+//                DeepWatershed.imReconstruct(subtracted, maxima, reconstructed, radius);
+//
+////                ProcessingCV.morphologicalReconstruction(subtracted, maxima);
+//                String reconstructedPath = "/Users/yokote.k/Desktop/MIBI/model_output/reconstructed.tiff";
+//                opencv_imgcodecs.imwrite(reconstructedPath, reconstructed);
+//
+//
+//                opencv_core.subtract(maxima, reconstructed, local_max);
+//                opencv_imgproc.threshold(local_max, local_max, 0.1, 1, CV_THRESH_BINARY);
+
+                String localMaxPath = "/Users/yokote.k/Desktop/MIBI/model_output/local_max.tiff";
+                opencv_imgcodecs.imwrite(localMaxPath, local_max);
 
                 Mat labels = new Mat();
                 local_max.convertTo(local_max, CV_8S);
@@ -162,7 +176,7 @@ public class TensorFlowModelLoadTest implements Runnable  {
 //                System.out.println(output0.size());
 
 
-            } catch (IOException ioException) {
+            } catch (IOException | UnsupportedTypeException ioException) {
                 ioException.printStackTrace();
             }
 
