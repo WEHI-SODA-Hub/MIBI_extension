@@ -103,46 +103,57 @@ public class TensorFlowModelLoadTest implements Runnable  {
                         .fetch("StatefulPartitionedCall:3")
                         .run();
 
-                var maxima = TensorFlowTools.convertToMats(out.get(0)).get(0);
-                var interior = TensorFlowTools.convertToMats(out.get(1)).get(0);
+                var maximaC = TensorFlowTools.convertToMats(out.get(0)).get(0);
+                var interiorC = TensorFlowTools.convertToMats(out.get(1)).get(0);
+                extractChannel(interiorC, interiorC, 1);
+
+                var maximaN = TensorFlowTools.convertToMats(out.get(2)).get(0);
+                var interiorN = TensorFlowTools.convertToMats(out.get(3)).get(0);
+                extractChannel(interiorN, interiorN, 1);
 
 
-                // Blur
-                // Format interior
-                extractChannel(interior, interior, 1);
-                GaussianBlur(interior, interior, new Size(0,0), 2, 2, BORDER_REFLECT);
+                List<Mat> wholeCellList = new ArrayList<>();
+                wholeCellList.add(maximaC);
+                wholeCellList.add(interiorC);
 
-                // Get the imreconstruct
-                int radius = 2;
-                Mat local_max = new Mat();
-                DeepWatershed.hMaxima(maxima, local_max, 0.1, radius, 1);
+                List<Mat> nuclearList = new ArrayList<>();
+                nuclearList.add(maximaN);
+                nuclearList.add(interiorN);
 
-//                Mat mat_h = new Mat(maxima.size(), CV_32F, new Scalar(0.1));
-//                Mat subtracted = new Mat();
-//                opencv_core.subtract(maxima, mat_h, subtracted);
+
+                Mat labelledImWholeCell = new Mat();
+                var deepWatershed = DeepWatershed.builder().build();
+                deepWatershed.deepWatershed(wholeCellList, labelledImWholeCell);
+
+                Mat labelledImNuclear = new Mat();
+                deepWatershed.deepWatershed(nuclearList, labelledImNuclear);
+
+//                // Blur
+//                // Format interior
+//                extractChannel(interior, interior, 1);
+//                GaussianBlur(interior, interior, new Size(0,0), 2, 2, BORDER_REFLECT);
+//
+//                // Get the imreconstruct
+//                int radius = 2;
+//                Mat local_max = new Mat();
+////                DeepWatershed.hMaxima(maxima, local_max, 0.1, 1, true);
+//
+//                String localMaxPath = "/Users/yokote.k/Desktop/MIBI/model_output/local_max.tiff";
+//                opencv_imgcodecs.imwrite(localMaxPath, local_max);
+//
+//                Mat mask1 = new Mat();
+//                opencv_imgproc.threshold(interior, mask1, 0.3, 1, CV_THRESH_BINARY);
 //
 //
-//                Mat reconstructed = new Mat();
-//                DeepWatershed.imReconstruct(subtracted, maxima, reconstructed, radius);
 //
-////                ProcessingCV.morphologicalReconstruction(subtracted, maxima);
-//                String reconstructedPath = "/Users/yokote.k/Desktop/MIBI/model_output/reconstructed.tiff";
-//                opencv_imgcodecs.imwrite(reconstructedPath, reconstructed);
-//
-//
-//                opencv_core.subtract(maxima, reconstructed, local_max);
-//                opencv_imgproc.threshold(local_max, local_max, 0.1, 1, CV_THRESH_BINARY);
+////                DeepWatershed.watershed(interior, local_max, labelledIm, mask1);
 
-                String localMaxPath = "/Users/yokote.k/Desktop/MIBI/model_output/local_max.tiff";
-                opencv_imgcodecs.imwrite(localMaxPath, local_max);
+                String cellsPath = "/Users/yokote.k/Desktop/MIBI/model_output/cells.tiff";
+                opencv_imgcodecs.imwrite(cellsPath, labelledImWholeCell);
 
-                Mat labels = new Mat();
-                local_max.convertTo(local_max, CV_8S);
-                opencv_imgproc.connectedComponents(local_max, labels);
-                labels.convertTo(labels, CV_32SC1);
+                String nuclearPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclei.tiff";
+                opencv_imgcodecs.imwrite(nuclearPath, labelledImNuclear);
 
-
-                interior.convertTo(interior, CV_8UC3);
 //                Mat channel1 = new Mat();
 //                interior.copyTo(channel1);
 //                Mat channel2 = new Mat();
@@ -153,10 +164,10 @@ public class TensorFlowModelLoadTest implements Runnable  {
 
 
 //                opencv_imgproc.watershed(interior, labels);
-                ProcessingCV.doWatershed(interior, labels, true);
+//                ProcessingCV.doWatershed(interior, labels, true);
 
-                String labelsPath = "/Users/yokote.k/Desktop/MIBI/model_output/labels.tiff";
-                opencv_imgcodecs.imwrite(labelsPath, labels);
+//                String labelsPath = "/Users/yokote.k/Desktop/MIBI/model_output/labels.tiff";
+//                opencv_imgcodecs.imwrite(labelsPath, labels);
 
 //                opencv_imgcodecs.imwrite(subtractedPath, subtracted);
 //                opencv_imgcodecs.imwrite(reconstructedPath , maxima);
@@ -176,7 +187,7 @@ public class TensorFlowModelLoadTest implements Runnable  {
 //                System.out.println(output0.size());
 
 
-            } catch (IOException | UnsupportedTypeException ioException) {
+            } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
 

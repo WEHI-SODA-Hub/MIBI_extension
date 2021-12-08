@@ -157,7 +157,7 @@ public class DeepCell2D {
         }
 
         try (@SuppressWarnings("unchecked")
-         var scope = new PointerScope()) {
+            var scope = new PointerScope()) {
             Mat mat;
             try {
                 mat = op.apply(imageData, requestPadded);
@@ -205,8 +205,8 @@ public class DeepCell2D {
     private Object postProcess(HashMap<String, List<Mat>> formattedOutput){
 
         var deepWatershed = DeepWatershed.builder().build();
-        var wholeCellMat = deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey));
-        var nuclearMat = deepWatershed.deepWatershed(formattedOutput.get(nuclearKey));
+//        var wholeCellMat = deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey));
+//        var nuclearMat = deepWatershed.deepWatershed(formattedOutput.get(nuclearKey));
 
         return null;
     }
@@ -224,21 +224,25 @@ public class DeepCell2D {
         }
 
         // Convert all the Tensors to Opencv Mats
-        var output1 = TensorFlowTools.convertToMats(output.get(0)).get(0);
-        var output2 = TensorFlowTools.convertToMats(output.get(1)).get(0);
-        var output3 = TensorFlowTools.convertToMats(output.get(2)).get(0);
-        var output4 = TensorFlowTools.convertToMats(output.get(3)).get(0);
+        var maximaCell = TensorFlowTools.convertToMats(output.get(0)).get(0);
+        var interiorCell = TensorFlowTools.convertToMats(output.get(1)).get(0);
+        var maximaNuclear = TensorFlowTools.convertToMats(output.get(2)).get(0);
+        var interiorNuclear = TensorFlowTools.convertToMats(output.get(3)).get(0);
+
+        // Extract the necessary channel from interiors.
+        opencv_core.extractChannel(interiorCell, interiorCell, 1);
+        opencv_core.extractChannel(interiorNuclear, interiorNuclear, 1);
 
         HashMap<String, List<Mat>> map = new HashMap<>();
 
         var wholeCell = new ArrayList<Mat>();
-        wholeCell.add(output1);
-        wholeCell.add(output2);
+        wholeCell.add(maximaCell);
+        wholeCell.add(interiorCell);
         map.put(wholeCellKey, wholeCell);
 
         var nuclear = new ArrayList<Mat>();
-        nuclear.add(output3);
-        nuclear.add(output4);
+        nuclear.add(maximaNuclear);
+        nuclear.add(interiorNuclear);
         map.put(nuclearKey, nuclear);
 
         return map;
