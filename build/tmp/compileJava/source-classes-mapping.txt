@@ -4,10 +4,10 @@ mibi/stitch/GridStitchMacroOptions.java
  mibi.stitch.GridStitchMacroOptions$FusionMethod
  mibi.stitch.GridStitchMacroOptions$ImageOutput
  mibi.stitch.GridStitchMacroOptions$Type
-mibi/segmentation/DeepCell2D.java
- mibi.segmentation.DeepCell2D
- mibi.segmentation.DeepCell2D$Builder
- mibi.segmentation.DeepCell2D$PotentialNucleus
+mibi/segmentation/CV_DTYPE.java
+ mibi.segmentation.CV_DTYPE
+ mibi.segmentation.CV_DTYPE$CV_FLOAT
+ mibi.segmentation.CV_DTYPE$CV_SHORT
 mibi/stitch/GridStitchWindow.java
  mibi.stitch.GridStitchWindow
  mibi.stitch.GridStitchWindow$1
@@ -19,15 +19,15 @@ mibi/segmentation/SegmentationWindow.java
  mibi.segmentation.SegmentationWindow
 mibi/gui/NodeTools.java
  mibi.gui.NodeTools
-mibi/segmentation/CV_DTYPE.java
- mibi.segmentation.CV_DTYPE
- mibi.segmentation.CV_DTYPE$CV_FLOAT
- mibi.segmentation.CV_DTYPE$CV_SHORT
 mibi/segmentation/DeepCellToolbox/DeepWatershed.java
  mibi.segmentation.DeepCellToolbox.DeepWatershed
  mibi.segmentation.DeepCellToolbox.DeepWatershed$Builder
  mibi.segmentation.DeepCellToolbox.DeepWatershed$MaximaAlgorithms
 mibi/MIBIExtension.java
  mibi.MIBIExtension
+mibi/segmentation/DeepCell2D.java
+ mibi.segmentation.DeepCell2D
+ mibi.segmentation.DeepCell2D$Builder
+ mibi.segmentation.DeepCell2D$PotentialNucleus
 mibi/segmentation/TensorFlowModelLoadTest.java
  mibi.segmentation.TensorFlowModelLoadTest

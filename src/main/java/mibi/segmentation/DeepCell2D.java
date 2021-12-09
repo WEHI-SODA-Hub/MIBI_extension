@@ -3,8 +3,10 @@ package mibi.segmentation;
 import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
+import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.Rect;
 import org.bytedeco.opencv.opencv_core.Size;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
@@ -22,11 +24,13 @@ import qupath.lib.images.servers.ColorTransforms.ColorTransform;
 
 import qupath.lib.images.servers.PixelCalibration;
 import qupath.lib.images.servers.PixelType;
+import qupath.lib.images.servers.TileRequest;
+import qupath.lib.regions.ImagePlane;
 import qupath.lib.regions.Padding;
 import qupath.lib.regions.RegionRequest;
 import qupath.lib.roi.GeometryTools;
+import qupath.lib.roi.ROIs;
 import qupath.lib.roi.interfaces.ROI;
-import qupath.opencv.WatershedNucleiCV;
 import qupath.opencv.ops.ImageDataOp;
 import qupath.opencv.ops.ImageOp;
 import qupath.opencv.ops.ImageOps;
@@ -36,6 +40,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.bytedeco.opencv.global.opencv_core.CV_32F;
 
 //TODO: Ignore pooling for now. Focus on getting a working output.
 /**
@@ -101,26 +107,58 @@ public class DeepCell2D {
         var tiles = opServer.getTileRequestManager().getTileRequests(request);
         var mask = roi == null ? null : roi.getGeometry();
 
+
         // Detect all potential nuclei
         var server = imageData.getServer();
         var cal = server.getPixelCalibration();
         double expansion = cellExpansion / cal.getAveragedPixelSize().doubleValue();
         assert roi != null;
+
+        roi = ROIs.createRectangleROI(0,0,imageData.getServer().getWidth(), imageData.getServer().getHeight(), ImagePlane.getDefaultPlane());
         var plane = roi.getImagePlane();
 
         if (tiles.size() > 1)
             log("Detecting nuclei for {} tiles", tiles.size());
         else
             log("Detecting nuclei");
-        var nuclei = tiles.parallelStream()
+
+//        for (var tile : tiles){
+//            System.out.println("Tile X: "+tile.getTileX() + ", Image X: "+tile.getImageX());
+//            System.out.println("Tile Y: "+tile.getTileY() + ", Image Y: "+tile.getImageY());
+//            ROI rec = ROIs.createRectangleROI(
+//                    tile.getTileX(),
+//                    tile.getTileY(),
+//                    tile.getTileWidth(),
+//                    tile.getTileHeight(),
+//                    tile.getPlane()
+//            );
+//            var annotation = PathObjects.createAnnotationObject(rec);
+//            imageData.getHierarchy().addPathObject(annotation);
+//        }
+
+
+        Mat wholeCellIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
+        Mat nuclearIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
+
+        tiles.stream()
                 .filter(t -> mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight())))
-                .flatMap(t -> detectObjectsForTile(op, dnn, imageData, t.getRegionRequest(), tiles.size() > 1, mask).stream())
-                .collect(Collectors.toList());
+                .forEachOrdered(t -> {
+                    var output = labelledImageForTile(op, dnn, imageData, t.getRegionRequest(), tiles.size() > 1, mask);
+                    Rect srcRec = new Rect(t.getImageX(), t.getImageY(), t.getTileWidth(), t.getTileHeight());
+                    
+                });
+
+        var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell.tiff";
+        var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear.tiff";
+        opencv_imgcodecs.imwrite(wholeCellImPath, wholeCellIm);
+        opencv_imgcodecs.imwrite(nuclearImPath, nuclearIm);
+
+
     }
 
     private boolean cancelRuns = false;
     //TODO: Haven't added in the percentile thresholding which is in deepcell
-    private List<PotentialNucleus> detectObjectsForTile(ImageDataOp op,
+    private List<Mat> labelledImageForTile(ImageDataOp op,
                                                         SavedModelBundle model,
                                                         ImageData<BufferedImage> imageData,
                                                         RegionRequest regionRequest,
@@ -161,19 +199,12 @@ public class DeepCell2D {
             Mat mat;
             try {
                 mat = op.apply(imageData, requestPadded);
+
             } catch (IOException e) {
                 logger.error(e.getLocalizedMessage(), e);
                 return Collections.emptyList();
             }
 
-            // Calculate image width & height.
-            // These need to be consistent with the expected maximum number of pooling operations
-            // to avoid shape problems.
-//            int expectedPooling = 6; // A generous estimate (usually 3 or 4 expected)
-//            int multiple = (int) Math.pow(2, expectedPooling);
-//            int tw = (int) Math.ceil(mat.cols() / (double) multiple) * multiple;
-//            int th = (int) Math.ceil(mat.rows() / (double) multiple) * multiple;
-//
             // Ensure we have a Mat of the right size. If not, create a padding around to make a mat of the correct size
             var padding = ensureSize(mat, tileWidth, tileHeight, opencv_core.BORDER_REFLECT);
 
@@ -193,22 +224,28 @@ public class DeepCell2D {
                     .run();
 
             var formattedOutput = formatOutput(output);
-            var labelledImages = postProcess(formattedOutput);
+            return postProcess(formattedOutput, padding);
         }
-
-        return null;
     }
 
 
     // TODO: Check for which compartment user wants
     // This will process the raw outputs of the model into labelled images
-    private Object postProcess(HashMap<String, List<Mat>> formattedOutput){
+    private List<Mat> postProcess(HashMap<String, List<Mat>> formattedOutput, Padding padding){
 
         var deepWatershed = DeepWatershed.builder().build();
-//        var wholeCellMat = deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey));
-//        var nuclearMat = deepWatershed.deepWatershed(formattedOutput.get(nuclearKey));
+        var wholeCellMat = new Mat();
+        deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey), wholeCellMat);
+        var nuclearMat = new Mat();
+        deepWatershed.deepWatershed(formattedOutput.get(nuclearKey), nuclearMat);
 
-        return null;
+        reversePadding(wholeCellMat, padding, opencv_core.BORDER_REFLECT);
+        reversePadding(nuclearMat, padding, opencv_core.BORDER_REFLECT);
+
+        List<Mat> result = new ArrayList<>();
+        result.add(wholeCellMat);
+        result.add(nuclearMat);
+        return result;
     }
 
 
@@ -230,6 +267,7 @@ public class DeepCell2D {
         var interiorNuclear = TensorFlowTools.convertToMats(output.get(3)).get(0);
 
         // Extract the necessary channel from interiors.
+        System.out.println(interiorCell.channels());
         opencv_core.extractChannel(interiorCell, interiorCell, 1);
         opencv_core.extractChannel(interiorNuclear, interiorNuclear, 1);
 
@@ -279,6 +317,17 @@ public class DeepCell2D {
         return padding;
     }
 
+    private static void reversePadding(Mat mat, Padding padding, int borderType){
+        var x1 = padding.getX1();
+        var x2 = padding.getX2();
+        var y1 = padding.getY1();
+        var y2 = padding.getY2();
+        Rect rect = new Rect(x1, y1, x2-x1, y2-y1);
+        mat.apply(rect).copyTo(mat);
+//        opencv_core.copyMakeBorder(mat, mat,-y1, -y2, -x1, -x2, borderType);
+
+    }
+
 
     private boolean doLog = true;
     private void log(String msg, Object... args){
@@ -310,7 +359,9 @@ public class DeepCell2D {
         }
     }
 
-
+    public static Builder builder(){
+        return new Builder();
+    }
 
     public static class Builder{
 
