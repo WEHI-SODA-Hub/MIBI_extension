@@ -39,6 +39,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.bytedeco.opencv.global.opencv_core.CV_32F;
@@ -122,48 +123,59 @@ public class DeepCell2D {
         else
             log("Detecting nuclei");
 
-//        for (var tile : tiles){
-//            System.out.println("Tile X: "+tile.getTileX() + ", Image X: "+tile.getImageX());
-//            System.out.println("Tile Y: "+tile.getTileY() + ", Image Y: "+tile.getImageY());
-//            ROI rec = ROIs.createRectangleROI(
-//                    tile.getTileX(),
-//                    tile.getTileY(),
-//                    tile.getTileWidth(),
-//                    tile.getTileHeight(),
-//                    tile.getPlane()
-//            );
-//            var annotation = PathObjects.createAnnotationObject(rec);
-//            imageData.getHierarchy().addPathObject(annotation);
-//        }
-
 
         Mat wholeCellIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
         Mat nuclearIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
 
-        tiles.stream()
-                .filter(t -> mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight())))
-                .forEachOrdered(t -> {
-                    var output = labelledImageForTile(op, dnn, imageData, t.getRegionRequest(), tiles.size() > 1, mask);
-                    Rect srcRec = new Rect(t.getImageX(), t.getImageY(), t.getTileWidth(), t.getTileHeight());
-                    
-                });
+        Mat tiledLabelledCell = new Mat();
+        Mat tiledLabelledNuclear = new Mat();
 
-        var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell.tiff";
-        var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear.tiff";
-        opencv_imgcodecs.imwrite(wholeCellImPath, wholeCellIm);
-        opencv_imgcodecs.imwrite(nuclearImPath, nuclearIm);
+        int i=0;
+        for (TileRequest t: tiles) {
+            if (mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight()))) {
+                labelledImageForTile(
+                        op,
+                        dnn,
+                        imageData,
+                        t.getRegionRequest(),
+                        tiles.size() > 1,
+                        mask,
+                        tiledLabelledCell,
+                        tiledLabelledNuclear
+                );
+            }
+        }
 
 
+//        AtomicInteger i= new AtomicInteger();
+//        tiles.stream()
+//                .filter(t -> mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight())))
+//                .forEachOrdered(t -> {
+//                    var output = labelledImageForTile(op, dnn, imageData, t.getRegionRequest(), tiles.size() > 1, mask);
+//                    var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell"+i+".tiff";
+//                    var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear"+i+".tiff";
+//                    opencv_imgcodecs.imwrite(wholeCellImPath, output.get(0));
+//                    opencv_imgcodecs.imwrite(nuclearImPath, output.get(1));
+//                    i.getAndIncrement();
+//                });
+
+//        var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell.tiff";
+//        var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear.tiff";
+//        opencv_imgcodecs.imwrite(wholeCellImPath, wholeCellIm);
+//        opencv_imgcodecs.imwrite(nuclearImPath, nuclearIm);
     }
 
     private boolean cancelRuns = false;
     //TODO: Haven't added in the percentile thresholding which is in deepcell
-    private List<Mat> labelledImageForTile(ImageDataOp op,
+    private void labelledImageForTile(ImageDataOp op,
                                                         SavedModelBundle model,
                                                         ImageData<BufferedImage> imageData,
                                                         RegionRequest regionRequest,
                                                         boolean excludeOnBounds,
-                                                        Geometry mask) {
+                                                        Geometry mask,
+                                                        Mat matCell,
+                                                        Mat matNuclear
+    ) {
 
         // TODO: Work out what this is for
         if (Thread.currentThread().isInterrupted())
@@ -202,7 +214,7 @@ public class DeepCell2D {
 
             } catch (IOException e) {
                 logger.error(e.getLocalizedMessage(), e);
-                return Collections.emptyList();
+                return;
             }
 
             // Ensure we have a Mat of the right size. If not, create a padding around to make a mat of the correct size
@@ -211,7 +223,6 @@ public class DeepCell2D {
 
             // Convert the mat to a tensor
             var input = TensorFlowTools.convertToTensor(mat);
-
             // Start a session.
             var sess = model.session();
             List<Tensor> output;
@@ -223,29 +234,22 @@ public class DeepCell2D {
                     .fetch(outputTensorInfo.get(3).getName())
                     .run();
 
+
             var formattedOutput = formatOutput(output);
-            return postProcess(formattedOutput, padding);
+            postProcess(formattedOutput, padding, matCell, matNuclear);
         }
     }
 
-
+    private static int iter=0;
     // TODO: Check for which compartment user wants
     // This will process the raw outputs of the model into labelled images
-    private List<Mat> postProcess(HashMap<String, List<Mat>> formattedOutput, Padding padding){
+    private void postProcess(HashMap<String, List<Mat>> formattedOutput, Padding padding, Mat matCell, Mat matNuclear){
 
         var deepWatershed = DeepWatershed.builder().build();
-        var wholeCellMat = new Mat();
-        deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey), wholeCellMat);
-        var nuclearMat = new Mat();
-        deepWatershed.deepWatershed(formattedOutput.get(nuclearKey), nuclearMat);
 
-        reversePadding(wholeCellMat, padding, opencv_core.BORDER_REFLECT);
-        reversePadding(nuclearMat, padding, opencv_core.BORDER_REFLECT);
+        deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey), matCell);
+        deepWatershed.deepWatershed(formattedOutput.get(nuclearKey), matNuclear);
 
-        List<Mat> result = new ArrayList<>();
-        result.add(wholeCellMat);
-        result.add(nuclearMat);
-        return result;
     }
 
 
@@ -260,6 +264,8 @@ public class DeepCell2D {
             throw new RuntimeException("Expected 4 outputs from model but got "+output.size());
         }
 
+
+
         // Convert all the Tensors to Opencv Mats
         var maximaCell = TensorFlowTools.convertToMats(output.get(0)).get(0);
         var interiorCell = TensorFlowTools.convertToMats(output.get(1)).get(0);
@@ -267,7 +273,6 @@ public class DeepCell2D {
         var interiorNuclear = TensorFlowTools.convertToMats(output.get(3)).get(0);
 
         // Extract the necessary channel from interiors.
-        System.out.println(interiorCell.channels());
         opencv_core.extractChannel(interiorCell, interiorCell, 1);
         opencv_core.extractChannel(interiorNuclear, interiorNuclear, 1);
 
@@ -616,16 +621,17 @@ public class DeepCell2D {
             deepCell2D.outputTensorInfo = deepCell2D.signatureDef.getOutputsMap()
                     .values()
                     .stream()
-                    .filter(Objects::nonNull).collect(Collectors
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparing(TensorInfo::getName))
+                    .collect(Collectors
                             .toCollection(ArrayList::new));
-
             // Make sure the model has the correct number of outputs
             assert deepCell2D.outputTensorInfo.size() == 4;
 
 
 
             mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
-            mergedOps.add(new DeepCellPreprocessOp());
+            mergedOps.add(DeepCellPreprocessOp.preprocess());
             // ImageOps.buildImageDataOp(channels) is the operation to extract the channels
             // Also includes any other image operations the user has specified
             deepCell2D.op = ImageOps.buildImageDataOp(channels)

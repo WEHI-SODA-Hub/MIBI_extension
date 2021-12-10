@@ -144,7 +144,7 @@ public class DeepWatershed {
     }
 
     // Method which calculates the H maxima of the image
-    private void hMaxima(Mat image, Mat localMaxima, double h, double maxVal, boolean safe) {
+    public static void hMaxima(Mat image, Mat localMaxima, double h, double maxVal, boolean safe) {
 
         if (!CV_DTYPE.CV_FLOAT.isDType(image.type())){
             //TODO: Catch wrong input image
@@ -177,6 +177,7 @@ public class DeepWatershed {
         opencv_core.subtract(image, rec_img, res_img);
 
         // TODO: Potentially dodgey. No reason this should work but it does
+        var subtractive_factor = 0.001;
         if (safe){
             h = h - h * subtractive_factor;
         }

@@ -58,11 +58,54 @@ public class TensorFlowModelLoadTest implements Runnable  {
         GridPane grid = new GridPane();
         Button button = new Button("Run");
         button.setOnAction(e -> {
+            int tileWidth = 256;
+            int tileHeight = 256;
+            ROI roi = null;
 
-            String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
+            var padding = Padding.symmetric(0);
+            List<ImageOp> ops = new ArrayList<>();
+            List<ImageOp> mergedOps = new ArrayList<>(ops);
+            ImageDataOp op;
+
             var imageData = quPathGUI.getImageData();
-            var deepCell = DeepCell2D.builder().modelPath(modelPath).channels(22, 0).padding(0).build();
-            deepCell.detectObjects(imageData, null);
+            var resolution = imageData.getServer().getPixelCalibration();
+            mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
+            mergedOps.add(DeepCellPreprocessOp.preprocess());
+
+            var channels_ind = new String[] {"Channel 22", "Channel 1"};
+            var channels = Arrays.stream(channels_ind)
+                    .map(ColorTransforms::createChannelExtractor)
+                    .toArray(ColorTransforms.ColorTransform[]::new);
+
+            op = ImageOps.buildImageDataOp(channels)
+                    .appendOps(mergedOps.toArray(ImageOp[]::new));
+
+
+
+            var opServer = ImageOps.buildServer(imageData, op, resolution, tileWidth, tileHeight);
+            var request = RegionRequest.createInstance(opServer);
+            var tiles = opServer.getTileRequestManager().getTileRequests(request);
+            var mask = roi == null ? null : roi.getGeometry();
+
+            try {
+                Mat mat = op.apply(imageData, request);
+                Tensor tensor = TensorFlowTools.convertToTensor(mat);
+                String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
+
+                var deep = DeepCell2D.builder().modelPath(modelPath).channels(21, 0).build();
+                deep.detectObjects(imageData, null);
+
+                Mat labelledImWholeCell = new Mat();
+                Mat labelledImNuclear = new Mat();
+
+//                String cellsPath = "/Users/yokote.k/Desktop/MIBI/model_output/cells.tiff";
+//                opencv_imgcodecs.imwrite(cellsPath, labelledImWholeCell);
+//
+//                String nuclearPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclei.tiff";
+//                opencv_imgcodecs.imwrite(nuclearPath, labelledImNuclear);
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
 
         });
         grid.add(button, 0,0);
