@@ -63,8 +63,8 @@ public class CV_DTYPE {
     }
 
     public enum CV_SHORT {
-        SHORT16(new int[] {CV_16SC1, CV_16SC2, CV_16SC3, CV_16SC4}),
-        SHORT32(new int[] {CV_32SC1, CV_32SC2, CV_32SC3, CV_32SC4});
+        SHORT16(new int[] {CV_16UC1, CV_16UC2, CV_16UC3, CV_16UC4});
+//        SHORT32(new int[] {CV_32UC1, CV_32UC2, CV_32SC3, CV_32SC4});
 
         private int[] types;
         CV_SHORT (int[] types){

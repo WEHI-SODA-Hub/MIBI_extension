@@ -92,17 +92,12 @@ public class TensorFlowModelLoadTest implements Runnable  {
                 Tensor tensor = TensorFlowTools.convertToTensor(mat);
                 String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
 
-                var deep = DeepCell2D.builder().modelPath(modelPath).channels(21, 0).build();
-                deep.detectObjects(imageData, null);
+                var deep = DeepCell2D.builder().padding(0).modelPath(modelPath).channels(21, 0).build();
+                var cells = deep.detectObjects(imageData, null);
 
-                Mat labelledImWholeCell = new Mat();
-                Mat labelledImNuclear = new Mat();
 
-//                String cellsPath = "/Users/yokote.k/Desktop/MIBI/model_output/cells.tiff";
-//                opencv_imgcodecs.imwrite(cellsPath, labelledImWholeCell);
-//
-//                String nuclearPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclei.tiff";
-//                opencv_imgcodecs.imwrite(nuclearPath, labelledImNuclear);
+                imageData.getHierarchy().addPathObjects(cells);
+
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }

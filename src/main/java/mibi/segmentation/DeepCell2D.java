@@ -1,14 +1,18 @@
 package mibi.segmentation;
 
+import ij.gui.Roi;
+import ij.process.ImageProcessor;
 import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
-import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Rect;
 import org.bytedeco.opencv.opencv_core.Size;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.index.strtree.STRtree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,15 +20,21 @@ import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Tensor;
 import org.tensorflow.proto.framework.SignatureDef;
 import org.tensorflow.proto.framework.TensorInfo;
-import qupath.ext.tensorflow.TensorFlowTools;
-import qupath.lib.analysis.features.ObjectMeasurements.*;
-import qupath.lib.images.ImageData;
-import qupath.lib.images.servers.ColorTransforms;
-import qupath.lib.images.servers.ColorTransforms.ColorTransform;
 
-import qupath.lib.images.servers.PixelCalibration;
-import qupath.lib.images.servers.PixelType;
-import qupath.lib.images.servers.TileRequest;
+import qupath.ext.tensorflow.TensorFlowTools;
+import qupath.imagej.processing.RoiLabeling;
+import qupath.imagej.tools.IJTools;
+import qupath.lib.analysis.features.ObjectMeasurements;
+import qupath.lib.analysis.features.ObjectMeasurements.*;
+import qupath.lib.common.GeneralTools;
+import qupath.lib.images.ImageData;
+import qupath.lib.images.servers.*;
+import qupath.lib.images.servers.ColorTransforms.ColorTransform;
+import qupath.lib.measurements.MeasurementList;
+import qupath.lib.measurements.MeasurementListFactory;
+import qupath.lib.objects.CellTools;
+import qupath.lib.objects.PathObject;
+import qupath.lib.objects.PathObjects;
 import qupath.lib.regions.ImagePlane;
 import qupath.lib.regions.Padding;
 import qupath.lib.regions.RegionRequest;
@@ -39,11 +49,12 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.bytedeco.opencv.global.opencv_core.CV_32F;
 
+//TODO: add in logger
 //TODO: Ignore pooling for now. Focus on getting a working output.
 /**
  * This is a Tensorflow DeepCell2D implementation HEAVILY inspired by Pete Bankhead's
@@ -65,7 +76,7 @@ public class DeepCell2D {
     private Collection<Measurements> measurements;
 
     private boolean ignoreCellOverlaps;
-    private boolean measureShape = false;
+    private boolean measureShape;
     private int nThreads = -1;
     private boolean constrainToParent = true;
 
@@ -74,7 +85,7 @@ public class DeepCell2D {
     private int tileHeight = 256;
     private int pad =0;
     private ImageDataOp op;
-    private double cellExpansion = Double.NaN;
+    private double cellExpansion;
     private double cellConstrainScale = Double.NaN;
     private static final int defaultTileSize = 256;
     /**
@@ -82,7 +93,7 @@ public class DeepCell2D {
      * @param imageData The image to be segmented
      * @param roi The region of interest within the image
      */
-    public void detectObjects(ImageData<BufferedImage> imageData, ROI roi){
+    public List<PathObject> detectObjects(ImageData<BufferedImage> imageData, ROI roi){
 
         var resolution = imageData.getServer().getPixelCalibration();
         if (Double.isFinite(pixelSize) && pixelSize > 0) {
@@ -93,7 +104,12 @@ public class DeepCell2D {
         int th = tileHeight <= 0 ? defaultTileSize : tileWidth;
 
         // applies any of the image operations to get the ROI
-        var opServer = ImageOps.buildServer(imageData, op, resolution, tw - pad*2, th - pad*2);
+        var opServer = ImageOps.buildServer(
+                imageData,
+                op,
+                resolution,
+                tw - pad*2,
+                th - pad*2);
 
         RegionRequest request;
         if (roi == null)
@@ -124,13 +140,11 @@ public class DeepCell2D {
             log("Detecting nuclei");
 
 
-        Mat wholeCellIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
-        Mat nuclearIm = new Mat(imageData.getServer().getWidth(), imageData.getServer().getHeight(), CV_32F);
 
-        Mat tiledLabelledCell = new Mat();
-        Mat tiledLabelledNuclear = new Mat();
+        Mat tiledLabelledCell = new Mat(CV_32F);
+        Mat tiledLabelledNuclear = new Mat(CV_32F);
+        List<PotentialCell> allCells = new ArrayList<>();
 
-        int i=0;
         for (TileRequest t: tiles) {
             if (mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight()))) {
                 labelledImageForTile(
@@ -143,27 +157,69 @@ public class DeepCell2D {
                         tiledLabelledCell,
                         tiledLabelledNuclear
                 );
+
+                try{
+                    allCells.addAll(convertLabelsToCells(
+                                                        imageData.getServer(),
+                                                        tiledLabelledCell,
+                                                        tiledLabelledNuclear,
+                                                        t.getRegionRequest()));
+                } catch(IOException e){
+                    e.printStackTrace();
+                }
+
             }
         }
+//        allCells = filterCells(allCells);
+
+        // TODO: is cell expansion even necessary??
+        List<PathObject> cells = allCells.stream().map(t -> PathObjects.createCellObject(
+                t.getMembrane(),
+                t.getNucleus(),
+                null,
+                null)
+        ).collect(Collectors.toList());
 
 
-//        AtomicInteger i= new AtomicInteger();
-//        tiles.stream()
-//                .filter(t -> mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight())))
-//                .forEachOrdered(t -> {
-//                    var output = labelledImageForTile(op, dnn, imageData, t.getRegionRequest(), tiles.size() > 1, mask);
-//                    var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell"+i+".tiff";
-//                    var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear"+i+".tiff";
-//                    opencv_imgcodecs.imwrite(wholeCellImPath, output.get(0));
-//                    opencv_imgcodecs.imwrite(nuclearImPath, output.get(1));
-//                    i.getAndIncrement();
-//                });
+        // There should be no cell overlaps TODO: add in cell expansion
 
-//        var wholeCellImPath = "/Users/yokote.k/Desktop/MIBI/model_output/wholeCell.tiff";
-//        var nuclearImPath = "/Users/yokote.k/Desktop/MIBI/model_output/nuclear.tiff";
-//        opencv_imgcodecs.imwrite(wholeCellImPath, wholeCellIm);
-//        opencv_imgcodecs.imwrite(nuclearImPath, nuclearIm);
+        // Add shape measurements, if needed
+        if (measureShape)
+            cells.parallelStream().forEach(c -> ObjectMeasurements.addShapeMeasurements(c, cal));
+
+        // Add intensity measurements, if needed
+        if (!cells.isEmpty() && !measurements.isEmpty()) {
+            log("Making measurements");
+            var stains = imageData.getColorDeconvolutionStains();
+            var builder = new TransformedServerBuilder(server);
+            if (stains != null) {
+                List<Integer> stainNumbers = new ArrayList<>();
+                for (int s = 1; s <= 3; s++) {
+                    if (!stains.getStain(s).isResidual())
+                        stainNumbers.add(s);
+                }
+                builder.deconvolveStains(stains, stainNumbers.stream().mapToInt(i -> i).toArray());
+            }
+
+            var server2 = builder.build();
+            double downsample = resolution.getAveragedPixelSize().doubleValue() / cal.getAveragedPixelSize().doubleValue();
+
+            cells.parallelStream().forEach(cell -> {
+                try {
+                    ObjectMeasurements.addIntensityMeasurements(server2, cell, downsample, measurements, compartments);
+                } catch (IOException e) {
+                    log(e.getLocalizedMessage(), e);
+                }
+            });
+
+        }
+
+        log("Detected {} cells", cells.size());
+
+        return CellTools.constrainCellOverlaps(cells);
     }
+
+
 
     private boolean cancelRuns = false;
     //TODO: Haven't added in the percentile thresholding which is in deepcell
@@ -184,7 +240,7 @@ public class DeepCell2D {
             Collections.emptyList();
 
         // List of potential Nuclei
-        List<PotentialNucleus> nuclei;
+        List<PotentialCell> nuclei;
 
         // Create a mask around pixels we can use
         var regionMask = GeometryTools.createRectangle(regionRequest.getX(), regionRequest.getY(),
@@ -237,6 +293,9 @@ public class DeepCell2D {
 
             var formattedOutput = formatOutput(output);
             postProcess(formattedOutput, padding, matCell, matNuclear);
+
+
+
         }
     }
 
@@ -249,7 +308,6 @@ public class DeepCell2D {
 
         deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey), matCell);
         deepWatershed.deepWatershed(formattedOutput.get(nuclearKey), matNuclear);
-
     }
 
 
@@ -290,6 +348,144 @@ public class DeepCell2D {
 
         return map;
     }
+
+    // TODO: Include "downsample" as a variable
+    private List<PotentialCell> convertLabelsToCells(
+            ImageServer<BufferedImage> server,
+            Mat cellLabels,
+            Mat nucleiLabels,
+            RegionRequest request) throws IOException {
+
+        var pathImage = IJTools.convertToImagePlus(server, request);
+
+        ImageProcessor cellProcessor = DeepWatershed.toImageProcessor(cellLabels);
+        ImageProcessor nucleiProcessor = DeepWatershed.toImageProcessor(nucleiLabels);
+
+        int n_cell = (int) cellProcessor.getStatistics().max;
+        int n_nuclei = (int) nucleiProcessor.getStatistics().max;
+
+        ArrayList<Roi> roisIJ_membrane = new ArrayList<>(Arrays.asList(RoiLabeling.labelsToConnectedROIs(cellProcessor, n_cell)));
+        ArrayList<Roi> roisIJ_nuclei = new ArrayList<>(Arrays.asList(RoiLabeling.labelsToConnectedROIs(nucleiProcessor, n_nuclei)));
+
+        var measurements = Arrays.asList(ObjectMeasurements.Measurements.values());
+
+        //TODO: capacity? See why we need a fixed value
+        var meas = MeasurementListFactory.createMeasurementList(50, MeasurementList.MeasurementListType.DOUBLE);
+        var compartments = Arrays.asList(ObjectMeasurements.Compartments.values());
+
+        // The detections
+        List<PotentialCell> detections = new ArrayList<>();
+        var cpt = 0;
+
+        // Iterate through the membrane rois
+        for (var roi : roisIJ_membrane){
+            if (roi == null){
+                continue;
+            }
+            var roi_membrane = IJTools.convertToROI(roi, pathImage);
+
+            AtomicReference<ROI> roi_nuclei = new AtomicReference<>();
+            AtomicReference<Double> min_diff_X = new AtomicReference<>(Double.MAX_VALUE);
+            AtomicReference<Double> min_diff_Y = new AtomicReference<>(Double.MAX_VALUE);
+
+            roisIJ_nuclei.stream().forEach(nucl -> {
+                    if (nucl != null) {
+                        var nuclei = IJTools.convertToROI(nucl, pathImage);
+                        var X = nuclei.getCentroidX();
+                        var Y = nuclei.getCentroidY();
+                        var diff_X = X - (roi_membrane.getCentroidX());
+                        var diff_Y = Y - (roi_membrane.getCentroidY());
+
+
+                        if ((Math.abs(diff_X)<2) && (Math.abs(diff_Y)<2) && (Math.abs(diff_X) < min_diff_X.get()) && (Math.abs(diff_Y) < min_diff_Y.get())) {
+                            roi_nuclei.set(nuclei);
+                            min_diff_X.set(Math.abs(diff_X));
+                            min_diff_Y.set(Math.abs(diff_Y));
+                        }
+                    }
+                }
+            );
+
+            // TODO: Log the error for this membrane
+            if (roi_nuclei.get() == null){
+
+                continue;
+            }
+            roisIJ_nuclei.remove(roi_nuclei.get());
+            var geomCell = CellTools.estimateCellBoundary(GeometryTools.roiToGeometry(roi_membrane), cellExpansion, 1);
+
+            int z =0 ;
+            int t = 0 ;
+            var plane = ImagePlane.getPlane(z,t);
+
+            var roiCell = GeometryTools.geometryToROI(geomCell, plane);
+            var detection = new PotentialCell(roiCell, roi_nuclei.get());
+
+            detections.add(detection);
+        }
+//        return filterCells(detections);
+        return detections;
+    }
+
+
+    private List<PotentialCell> filterCells(List<PotentialCell> potentialCells){
+        // Sort in descending order comparing the total area of the cell
+        potentialCells.sort(Comparator.comparingDouble(PotentialCell::getFullArea).reversed());
+
+        // Create array of nuclei to keep & to skip
+        var cells = new LinkedHashSet<PotentialCell>();
+        var skippedCells = new HashSet<PotentialCell>();
+        int skipErrorCount = 0;
+
+        // Create a spatial cache to find overlaps more quickly
+        // (Because of later tests, we don't need to update envelopes even though geometries may be modified)
+        Map<PotentialCell, Envelope> envelopes = new HashMap<>();
+        var tree = new STRtree();
+
+
+        for (var cell : potentialCells) {
+            var env = cell.getMembrane().getGeometry().getEnvelopeInternal();
+            envelopes.put(cell, env);
+            tree.insert(env, cell);
+        }
+
+        for (var cell : potentialCells) {
+            if (skippedCells.contains(cell))
+                continue;
+
+            cells.add(cell);
+            var envelope = envelopes.get(cell);
+
+            // We have done this for intersecting membranes
+            @SuppressWarnings("unchecked")
+            var overlaps = (List<PotentialCell>)tree.query(envelope);
+            for (var cell2 : overlaps) {
+                if (cell2 == cell || skippedCells.contains(cell2) || cells.contains(cell2))
+                    continue;
+
+                // If we have an overlap, retain the higher-probability nucleus only (i.e. the one we met first)
+                // Try to refine other nuclei
+                try {
+                    var env = envelopes.get(cell2);
+                    if (envelope.intersects(env) && cell.getMembraneGeom().intersects(cell2.getMembraneGeom())) {
+                        skippedCells.add(cell2);
+                    }
+                } catch (Exception e) {
+                    skippedCells.add(cell2);
+                    skipErrorCount++;
+                }
+
+            }
+        }
+        if (skipErrorCount > 0) {
+            int skipCount = skippedCells.size();
+            logger.warn("Skipped {} nucleus detection(s) due to error in resolving overlaps ({}% of all skipped)",
+                    skipErrorCount, GeneralTools.formatNumber(skipErrorCount*100.0/skipCount, 1));
+        }
+        return new ArrayList<>(cells);
+    }
+
+
 
     // Ensures that the tile is the correct size. If not if will add a padding to make it
     // the correct size.
@@ -343,25 +539,31 @@ public class DeepCell2D {
     }
 
 
-    private static class PotentialNucleus {
+    private static class PotentialCell {
 
-        private Geometry geometry;
+        private ROI nucleus;
+        private ROI membrane;
         private double fullArea;
-        private double probability;
-        private int classification;
 
-        PotentialNucleus(Geometry geom, double prob, int classification) {
-            this.geometry = geom;
-            this.probability = prob;
-            this.classification = classification;
-            this.fullArea = geom.getArea();
+        PotentialCell(ROI membrane, ROI nucleus) {
+            this.nucleus = nucleus;
+            this.membrane = membrane;
+            if (membrane != null) {
+                this.fullArea = membrane.getArea();
+            }
         }
-        double getProbability() {
-            return probability;
+
+        double getFullArea(){
+            return fullArea;
         }
-        int getClassification() {
-            return classification;
+
+        ROI getNucleus(){return nucleus; }
+        ROI getMembrane(){return membrane; }
+
+        Geometry getMembraneGeom(){
+            return membrane.getGeometry();
         }
+
     }
 
     public static Builder builder(){
@@ -384,10 +586,10 @@ public class DeepCell2D {
         private List<Measurements> measurements;
         private boolean measureShape = true;
         private List<Compartments> compartments = Arrays.asList(Compartments.values());
-        private double cellExpansion;
+        private double cellExpansion = 3;
         private double cellConstrainScale;
         private double pixelSize = Double.NaN;
-        private int pad = 32;
+        private int pad = 64;
 
 
 
