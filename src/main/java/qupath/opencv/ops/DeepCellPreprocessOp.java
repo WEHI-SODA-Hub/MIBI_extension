@@ -1,4 +1,4 @@
-package mibi.segmentation;
+package qupath.opencv.ops;
 
 import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.opencv.global.opencv_core;
@@ -6,7 +6,6 @@ import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.MatVector;
 import org.bytedeco.opencv.opencv_imgproc.CLAHE;
-import qupath.opencv.ops.ImageOp;
 
 import static org.bytedeco.opencv.global.opencv_core.CV_16UC1;
 import static org.bytedeco.opencv.global.opencv_core.CV_32F;
