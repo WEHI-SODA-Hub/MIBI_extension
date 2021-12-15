@@ -46,9 +46,9 @@ public class TensorFlowModelLoadTest implements Runnable  {
 
             var deep = DeepCell2D.builder()
                     .padding(32)
-                    .cellExpansion(0)
                     .nucleiChannel(21)
                     .membraneChannels(29, 32)
+                    .minNucleiArea(100)
                     .build();
             var cells = deep.detectObjects(imageData, null);
 

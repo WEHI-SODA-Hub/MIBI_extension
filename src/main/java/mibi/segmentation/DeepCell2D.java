@@ -5,13 +5,12 @@ import ij.process.ImageProcessor;
 import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
-import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
-import org.bytedeco.opencv.opencv_core.Rect;
 import org.bytedeco.opencv.opencv_core.Size;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +48,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.bytedeco.opencv.global.opencv_core.CV_32F;
 import static org.bytedeco.opencv.global.opencv_core.extractChannel;
 
 //TODO: add in logger
@@ -79,6 +77,7 @@ public class DeepCell2D {
     private boolean constrainToParent = true;
 
     private double pixelSize;
+    private int minNucleiArea;
     private int tileWidth = 256;
     private int tileHeight = 256;
     private int pad =0;
@@ -145,7 +144,6 @@ public class DeepCell2D {
 
         for (TileRequest t: tiles) {
             if (mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight()))) {
-//                System.out.println("x: " + t.getTileX()+ ", y: " + t.getTileY() + ", h: " + t.getTileHeight()+ ", w: " + t.getTileWidth());
 
                 allCells.addAll(Objects.requireNonNull(detectObjectsForTile(
                         op,
@@ -159,15 +157,22 @@ public class DeepCell2D {
 
             }
         }
-//        allCells = filterCells(allCells);
+        allCells = filterCells(allCells);
+
+        // Filter by size
+        if (minNucleiArea > 0){
+            allCells = allCells.stream().filter(c -> c.getNucleus().getArea() > minNucleiArea).collect(Collectors.toList());
+        }
 
         // TODO: is cell expansion even necessary??
         List<PathObject> cells = allCells.stream().map(t -> PathObjects.createCellObject(
-                t.getMembrane(),
-                t.getNucleus(),
+                GeometryTools.geometryToROI(t.getMembrane(), plane),
+                GeometryTools.geometryToROI(t.getNucleus(), plane),
                 null,
                 null)
         ).collect(Collectors.toList());
+
+
 
 
         // There should be no cell overlaps TODO: add in cell expansion
@@ -290,7 +295,7 @@ public class DeepCell2D {
                         imageData.getServer(),
                         matCell,
                         matNuclear,
-                        regionRequest,
+                        requestPadded,
                         padding
                 );
             } catch(IOException e){
@@ -360,26 +365,20 @@ public class DeepCell2D {
             Padding padding
     ) throws IOException {
 
+        Mat croppedCell = new Mat();
+        Mat croppedNuclei = new Mat();
 
-        var x1 = padding.getX1();
-        var x2 = padding.getX2();
-        var y1 = padding.getY1();
-        var y2 = padding.getY2();
-
-        System.out.println(x1 + " " + x2 + " "+y1 + " "+ y2 );
-        Mat croppedCell = new Mat(cellLabels.rows()-y2-y1, cellLabels.cols()-x2-x1, cellLabels.type());
-        System.out.println("Prev size cell: "+ cellLabels.size().width() + ", " +cellLabels.size().height() + ", Cropped size: "+croppedCell.size().width() + ", " +croppedCell.size().height());
-        OpenCVTools.crop(cellLabels, x1, y1, cellLabels.cols()-x2-x1, cellLabels.rows()-y2-y1).copyTo(croppedCell);
-
-        Mat croppedNuclei = new Mat(cellLabels.rows()-y2-y1, cellLabels.cols()-x2-x1, cellLabels.type());
-        System.out.println("Prev size cell: "+ nucleiLabels.size().width() + ", " +nucleiLabels.size().height() + ", Cropped size: "+croppedNuclei.size().width() + ", " +croppedNuclei.size().height());
-        OpenCVTools.crop(nucleiLabels, x1, y1, cellLabels.cols()-x2-x1, cellLabels.rows()-y2-y1).copyTo(croppedNuclei);
+        cropImage(cellLabels, croppedCell, padding);
+        cropImage(nucleiLabels, croppedNuclei, padding);
 
         var pathImage = IJTools.convertToImagePlus(server, request);
-        System.out.println(request.getX() + " " + request.getY());
         ImageProcessor cellProcessor = DeepWatershed.toImageProcessor(croppedCell);
         ImageProcessor nucleiProcessor = DeepWatershed.toImageProcessor(croppedNuclei);
 
+        var cal = pathImage.getPixelCalibration();
+
+        var factory = GeometryTools.getDefaultFactory();
+        var precisionModel = factory.getPrecisionModel();
 
         int n_cell = (int) cellProcessor.getStatistics().max;
         int n_nuclei = (int) nucleiProcessor.getStatistics().max;
@@ -398,75 +397,109 @@ public class DeepCell2D {
             var cpt = 0;
 
             // Iterate through the membrane rois
-            for (var roi : roisIJ_membrane) {
-                if (roi == null) {
+            for (var nucl : roisIJ_nuclei) {
+                if (nucl == null) {
                     continue;
                 }
 
 //                roi.setLocation(roi.getXBase() + request.getX() * request.getDownsample(), roi.getYBase() + request.getY() * request.getDownsample());
-                var roi_membrane = IJTools.convertToROI(roi,0, 0, request.getDownsample(), request.getPlane());
+                var roi_nuclei = IJTools.convertToROI(
+                        nucl,
+                        0,
+                        0,
+                        request.getDownsample(),
+                        request.getPlane());
 
-                AtomicReference<ROI> roi_nuclei = new AtomicReference<>();
+                AtomicReference<ROI> roi_membrane = new AtomicReference<>();
                 AtomicReference<Double> min_diff_X = new AtomicReference<>(Double.MAX_VALUE);
                 AtomicReference<Double> min_diff_Y = new AtomicReference<>(Double.MAX_VALUE);
 
-                roisIJ_nuclei.forEach(nucl -> {
-                            if (nucl != null) {
+                roisIJ_membrane.forEach(roi -> {
+                            if (roi != null) {
 
 //                                nucl.setLocation(nucl.getXBase() + request.getX() * request.getDownsample(), nucl.getYBase() + request.getY() * request.getDownsample());
-                                var nuclei = IJTools.convertToROI(nucl, 0, 0, request.getDownsample(), request.getPlane());
+                                var membrane = IJTools.convertToROI(
+                                        roi,
+                                        0,
+                                        0,
+                                        request.getDownsample(),
+                                        request.getPlane());
 
-                                var X = nuclei.getCentroidX();
-                                var Y = nuclei.getCentroidY();
-                                var diff_X = X - (roi_membrane.getCentroidX());
-                                var diff_Y = Y - (roi_membrane.getCentroidY());
+                                var X = membrane.getCentroidX();
+                                var Y = membrane.getCentroidY();
+                                var diff_X = X - (roi_nuclei.getCentroidX());
+                                var diff_Y = Y - (roi_nuclei.getCentroidY());
 
-                                if ((Math.abs(diff_X) < 2) && (Math.abs(diff_Y) < 2)) {
-                                    //&&  {
-                                    roi_nuclei.set(nuclei);
-
+                                if (Math.abs(diff_X) < 2 && Math.abs(diff_Y) < 2){
+                                    roi_membrane.set(membrane);
                                 }
 
-                                if ((Math.abs(diff_X) < min_diff_X.get()) && (Math.abs(diff_Y) < min_diff_Y.get())){
+                                if ((Math.abs(diff_X) < min_diff_X.get()) && (Math.abs(diff_Y) < min_diff_Y.get())) {
+                                    //&&  {
+//                                    roi_nuclei.set(nuclei);
                                     min_diff_X.set(Math.abs(diff_X));
                                     min_diff_Y.set(Math.abs(diff_Y));
                                 }
+
                             }
                         }
                 );
 
+                Geometry geomCell;
                 // TODO: Log the error for this membrane
-                if (roi_nuclei.get() == null) {
-                    System.out.println("Diffx: " + min_diff_X + ", Diffy: "+min_diff_Y);
-                    System.out.println("Nuc not found");
-                    continue;
+                if (roi_membrane.get() == null) {
+                    geomCell = CellTools.estimateCellBoundary(
+                            GeometryTools.roiToGeometry(roi_nuclei),
+                            cellExpansion * 2,
+                            1);
+                } else{
+                    roisIJ_membrane.remove(roi_membrane.get());
+                    geomCell = CellTools.estimateCellBoundary(
+                            GeometryTools.roiToGeometry(roi_membrane.get()),
+                            cellExpansion,
+                            1);
                 }
-                roisIJ_nuclei.remove(roi_nuclei.get());
-                var geomCell = CellTools.estimateCellBoundary(
-                        GeometryTools.roiToGeometry(roi_membrane),
-                        cellExpansion,
-                        1);
-
                 int z = 0;
                 int t = 0;
                 var plane = ImagePlane.getPlane(z, t);
-
                 var roiCell = GeometryTools.geometryToROI(geomCell, plane);
-
-                var detection = new PotentialCell(roiCell.translate(
-                                                            request.getX(),
-                                                            request.getY()),
-
-                        roi_nuclei.get().translate(
-                                request.getX(),
-                                request.getY()));
+                var detection = new PotentialCell(roiCell.translate(request.getX(), request.getY()).getGeometry(),
+                        roi_nuclei.translate(request.getX(), request.getY()).getGeometry());
 
                 detections.add(detection);
             }
-            //        return filterCells(detections);
-            return detections;
+
+
+
+            // Exclude anything that overlaps the right/bottom boundary of a region
+
+            var iter = detections.iterator();
+            while (iter.hasNext()) {
+                var n = iter.next();
+                var env = n.membrane.getEnvelopeInternal();
+                if (env.getMaxX() >= request.getMaxX()
+                        || env.getMaxY() >= request.getMaxY()
+                        || env.getMinX() <= request.getMinX()
+                        || env.getMinY() <= request.getMinY()
+                ) {
+                    if (env.getMinX() > 0 && env.getMinY() > 0 && env.getMaxX() < server.getWidth() && env.getMaxY() < server.getHeight())
+                        iter.remove();
+                }
+            }
+
+
+            return filterCells(detections);
+//            return detections;
     }
 
+
+    private void cropImage(Mat src, Mat dst, Padding padding){
+        var x1 = padding.getX1();
+        var x2 = padding.getX2();
+        var y1 = padding.getY1();
+        var y2 = padding.getY2();
+        OpenCVTools.crop(src, x1, y1, src.cols()-x2-x1, src.rows()-y2-y1).copyTo(dst);
+    }
 
     private List<PotentialCell> filterCells(List<PotentialCell> potentialCells){
         // Sort in descending order comparing the total area of the cell
@@ -484,7 +517,7 @@ public class DeepCell2D {
 
 
         for (var cell : potentialCells) {
-            var env = cell.getMembrane().getGeometry().getEnvelopeInternal();
+            var env = cell.getMembrane().getEnvelopeInternal();
             envelopes.put(cell, env);
             tree.insert(env, cell);
         }
@@ -507,8 +540,14 @@ public class DeepCell2D {
                 // Try to refine other nuclei
                 try {
                     var env = envelopes.get(cell2);
-                    if (envelope.intersects(env) && cell.getMembraneGeom().intersects(cell2.getMembraneGeom())) {
-                        skippedCells.add(cell2);
+                    if (envelope.intersects(env) && cell.nucleus.intersects(cell2.nucleus)) {
+                        // Retain the nucleus only if it is not fragmented, or less than half its original area
+                        var difference = cell2.nucleus.difference(cell.nucleus);
+                        if (difference instanceof Polygon && difference.getArea() > cell2.nucleus.getArea() / 2.0)
+                            cell2.nucleus = difference;
+                        else {
+                            skippedCells.add(cell2);
+                        }
                     }
                 } catch (Exception e) {
                     skippedCells.add(cell2);
@@ -571,11 +610,11 @@ public class DeepCell2D {
 
     private static class PotentialCell {
 
-        private ROI nucleus;
-        private ROI membrane;
+        private Geometry nucleus;
+        private Geometry membrane;
         private double fullArea;
 
-        PotentialCell(ROI membrane, ROI nucleus) {
+        PotentialCell(Geometry membrane, Geometry nucleus) {
             this.nucleus = nucleus;
             this.membrane = membrane;
             if (membrane != null) {
@@ -587,11 +626,15 @@ public class DeepCell2D {
             return fullArea;
         }
 
-        ROI getNucleus(){return nucleus; }
-        ROI getMembrane(){return membrane; }
+        Geometry getNucleus(){return nucleus; }
+        Geometry getMembrane(){return membrane; }
 
-        Geometry getMembraneGeom(){
-            return membrane.getGeometry();
+        void setNucleus(Geometry nucleus){
+            this.nucleus = nucleus;
+        }
+
+        void setMembrane(Geometry membrane){
+            this.membrane = membrane;
         }
 
     }
@@ -612,6 +655,9 @@ public class DeepCell2D {
         private ColorTransform[] membraneChannels = new ColorTransform[0];
 
         private boolean ignoreCellOverlaps = false;
+
+        private int minNucleiArea = -1;
+
 
         private boolean constrainToParent = false;
         private int nThreads = -1;
@@ -820,10 +866,21 @@ public class DeepCell2D {
             return this;
         }
 
+        /**
+         * Minimum nuclei area in pixel^2
+         * @param minNucleiArea
+         * @return
+         */
+        public Builder minNucleiArea(int minNucleiArea){
+            this.minNucleiArea = minNucleiArea;
+            return this;
+        }
 
         //TODO: Add the percentile threshold included
         // https://github.com/vanvalenlab/deepcell-toolbox/blob/88fa8e5afd68d6d3b87af703bc79a4d099e8ba17/deepcell_toolbox/processing.py
         // for better results using mesmer
+
+
 
         /**
          * Build the instance of the DeepCell2D.
@@ -887,6 +944,7 @@ public class DeepCell2D {
             deepCell2D.cellConstrainScale = cellConstrainScale;
             deepCell2D.cellExpansion = cellExpansion;
 
+            deepCell2D.minNucleiArea = minNucleiArea;
             deepCell2D.pad = pad;
             deepCell2D.ignoreCellOverlaps = ignoreCellOverlaps;
             deepCell2D.measureShape = measureShape;

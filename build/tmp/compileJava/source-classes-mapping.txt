@@ -2,8 +2,8 @@ mibi/segmentation/DeepCellToolbox/DeepWatershed.java
  mibi.segmentation.DeepCellToolbox.DeepWatershed
  mibi.segmentation.DeepCellToolbox.DeepWatershed$Builder
  mibi.segmentation.DeepCellToolbox.DeepWatershed$MaximaAlgorithms
-mibi/MIBIExtension.java
- mibi.MIBIExtension
+qupath/opencv/ops/DeepCellPreprocessOp.java
+ qupath.opencv.ops.DeepCellPreprocessOp
 mibi/stitch/GridStitchWindow.java
  mibi.stitch.GridStitchWindow
  mibi.stitch.GridStitchWindow$1
@@ -26,8 +26,8 @@ mibi/segmentation/CV_DTYPE.java
  mibi.segmentation.CV_DTYPE
  mibi.segmentation.CV_DTYPE$CV_FLOAT
  mibi.segmentation.CV_DTYPE$CV_SHORT
-qupath/opencv/ops/DeepCellPreprocessOp.java
- qupath.opencv.ops.DeepCellPreprocessOp
+mibi/MIBIExtension.java
+ mibi.MIBIExtension
 mibi/segmentation/DeepCell2D.java
  mibi.segmentation.DeepCell2D
  mibi.segmentation.DeepCell2D$Builder
