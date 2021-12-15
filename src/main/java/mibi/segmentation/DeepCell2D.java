@@ -86,6 +86,8 @@ public class DeepCell2D {
     private double cellConstrainScale = Double.NaN;
     private static final int defaultTileSize = 256;
 
+    private double subtractiveFactor;
+
     private static int iter=0;
     /**
      * Detects Cells objects for the given imageData and roi
@@ -310,7 +312,7 @@ public class DeepCell2D {
     // This will process the raw outputs of the model into labelled images
     private void postProcess(HashMap<String, List<Mat>> formattedOutput, Mat matCell, Mat matNuclear){
 
-        var deepWatershed = DeepWatershed.builder().build();
+        var deepWatershed = DeepWatershed.builder().subtractive_factor(subtractiveFactor).build();
 
         deepWatershed.deepWatershed(formattedOutput.get(wholeCellKey), matCell);
         deepWatershed.deepWatershed(formattedOutput.get(nuclearKey), matNuclear);
@@ -669,6 +671,7 @@ public class DeepCell2D {
         private double pixelSize = Double.NaN;
         private int pad = 64;
 
+        private double subtractiveFactor = 0.001;
 
 
         public Builder modelPath(String modelPath){
@@ -876,6 +879,17 @@ public class DeepCell2D {
             return this;
         }
 
+
+        /**
+         * The factor to which we multiply h and subtract from h. A higher value means less segmentation, a lower value
+         * mean over segmentation.
+         */
+        public Builder subtractiveFactor(double subtractiveFactor){
+            this.subtractiveFactor = subtractiveFactor;
+            return this;
+        }
+
+
         //TODO: Add the percentile threshold included
         // https://github.com/vanvalenlab/deepcell-toolbox/blob/88fa8e5afd68d6d3b87af703bc79a4d099e8ba17/deepcell_toolbox/processing.py
         // for better results using mesmer
@@ -951,6 +965,13 @@ public class DeepCell2D {
             deepCell2D.doLog = doLog;
             deepCell2D.nThreads = nThreads;
             deepCell2D.constrainToParent = constrainToParent;
+
+            if (subtractiveFactor > 1 || subtractiveFactor < 0){
+                logger.warn("Invalid subtractive factor. Using default value");
+                subtractiveFactor = 0.001;
+            }
+            deepCell2D.subtractiveFactor = subtractiveFactor;
+
 
             deepCell2D.compartments = new LinkedHashSet<>(compartments);
             if (measurements != null)

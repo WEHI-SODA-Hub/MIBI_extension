@@ -144,7 +144,7 @@ public class DeepWatershed {
     }
 
     // Method which calculates the H maxima of the image
-    public static void hMaxima(Mat image, Mat localMaxima, double h, double maxVal, boolean safe) {
+    public void hMaxima(Mat image, Mat localMaxima, double h, double maxVal, boolean safe) {
 
         if (!CV_DTYPE.CV_FLOAT.isDType(image.type())){
             //TODO: Catch wrong input image
@@ -177,7 +177,6 @@ public class DeepWatershed {
         opencv_core.subtract(image, rec_img, res_img);
 
         // TODO: Potentially dodgey. No reason this should work but it does
-        var subtractive_factor = 0.001;
         if (safe){
             h = h - h * subtractive_factor;
         }
@@ -214,14 +213,13 @@ public class DeepWatershed {
         private double fill_holes_threshold = 15;
         private int radius = 2;
 
-        private double subtractive_factor;
+        private double subtractive_factor = 0.001;
 
         private int maxima_index = 0;
         private int interior_index = 1;
-
         private double label_erosion = 0;
-
         private int pixel_expansion = 0;
+
         private MaximaAlgorithms maxima_algorithm = MaximaAlgorithms.H_MAX;
 
         public static Builder builder(){
@@ -284,7 +282,7 @@ public class DeepWatershed {
             this.pixel_expansion = pixel_expansion;
             return this;
         }
-        private Builder subtractive_factor(double subtractive_factor){
+        public Builder subtractive_factor(double subtractive_factor){
             this.subtractive_factor = subtractive_factor;
             return this;
         }
@@ -303,6 +301,7 @@ public class DeepWatershed {
             deepWatershed.fill_holes_threshold = this.fill_holes_threshold;
             deepWatershed.pixel_expansion = pixel_expansion;
             deepWatershed.maxima_algorithm = this.maxima_algorithm;
+            deepWatershed.subtractive_factor = this.subtractive_factor;
             return deepWatershed;
         }
     }
