@@ -11,7 +11,7 @@ public class TestGridStitchWindow extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        GridStitchWindow window = new GridStitchWindow();
+        GridStitchGUI window = new GridStitchGUI();
         window.createStage();
         primaryStage = window.getStage();
         primaryStage.show();

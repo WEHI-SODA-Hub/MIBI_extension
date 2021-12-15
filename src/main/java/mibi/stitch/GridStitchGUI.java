@@ -34,13 +34,13 @@ import javax.swing.*;
 import java.io.File;
 import java.util.Arrays;
 
-public class GridStitchWindow implements Runnable {
+public class GridStitchGUI implements Runnable {
 
     private Stage stage;
     private GridStitchMacroOptions options;
     private static final String TITLE = "Grid Stitch";
 
-    public GridStitchWindow(){
+    public GridStitchGUI(){
 
     }
 

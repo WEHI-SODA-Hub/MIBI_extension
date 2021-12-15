@@ -3,7 +3,7 @@ package mibi.segmentation;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
-public class SegmentationWindow implements Runnable {
+public class SegmentationGUI implements Runnable {
 
     private Stage stage;
     private final String TITLE = "DeepCell Cell Segmentation";
