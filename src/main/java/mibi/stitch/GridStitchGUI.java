@@ -48,6 +48,7 @@ public class GridStitchGUI implements Runnable {
         stage = new Stage();
         stage.resizableProperty().set(false);
         stage.setTitle(TITLE);
+        stage.setAlwaysOnTop(true);
         options = new GridStitchMacroOptions();
         GridPane gridPane = createGridPane();
         Scene scene = new Scene(gridPane);
@@ -267,10 +268,6 @@ public class GridStitchGUI implements Runnable {
             options.setSubpixelAccuracy(subPixelAccuracyCheckBox.isSelected());
 
             // Maybe add in future
-//            options.setDownSampleTiles(sample);
-//            options.setDisplayFusion(displa);
-//            options.setImageOutput(i);
-
             // Needs a better way to close log window.
             String command = "setBatchMode(true);" + options.toString() + "if (isOpen(\"Log\")) {\n" +
                     "         selectWindow(\"Log\");\n" +
