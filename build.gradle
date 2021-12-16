@@ -31,8 +31,8 @@ dependencies {
     implementation 'org.bytedeco:gradle-javacpp:1.5.6'
 //    implementation group: 'org.bytedeco', name: 'javacpp', version: '1.5.6'
 //    implementation "org.bytedeco:javacv-platform:1.5.6"
-    implementation files("/Users/yokote.k/QuPath/v0.3/extensions/MorphoLibJ_-1.4.3.jar")
-    implementation files("/Users/yokote.k/QuPath/v0.3/extensions/qupath-extension-tensorflow-0.3.0-all.jar")
+    implementation files("/Users/yokote.k/QuPath/v0.3/oldExtensions/MorphoLibJ_-1.4.3.jar")
+    implementation files("/Users/yokote.k/QuPath/v0.3/oldExtensions/qupath-extension-tensorflow-0.3.0-all.jar")
     // https://mvnrepository.com/artifact/opencv/opencv
 
 //    implementation group: 'org.tensorflow', name: 'tensorflow', version: '1.15.0'
@@ -54,6 +54,7 @@ jar {
         attributes 'Implementation-Title': 'MIBI Extension',
                 'Implementation-Version': '0.0.1'
     }
+
     destinationDirectory = file("$rootDir/output")
     archiveName 'qupath-MIBI-extension.jar'
 }
