@@ -180,25 +180,31 @@ public class DeepCell2D {
     private void detectObjectsImpl(ImageData<BufferedImage> imageData, PathObject parent, boolean fireUpdate) {
         List<PathObject> detections;
         // Lock early, so the user doesn't make modifications
-        if (parent != null) {
-            boolean wasLocked = parent.isLocked();
-            parent.setLocked(true);
-            detections = detectObjects(imageData, parent.getROI());
-            if (cancelRuns) {
-                logger.warn("DeepCell detection cancelled for {}", parent);
-                if (!wasLocked)
-                    parent.setLocked(false);
-                return;
-            }
-            parent.clearPathObjects();
-            parent.addPathObjects(detections);
-            if (fireUpdate)
-                imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy(), parent);
-        }else
-            detections = detectObjects(imageData, (ROI) null);
-            imageData.getHierarchy().addPathObjects(detections);
-            if (fireUpdate)
-                imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy());
+        if (parent == null) {
+            ROI roi = ROIs.createRectangleROI(
+                    0,
+                    0,
+                    imageData.getServer().getWidth(),
+                    imageData.getServer().getHeight(),
+                    ImagePlane.getDefaultPlane());
+            parent = PathObjects.createAnnotationObject(roi);
+            imageData.getHierarchy().addPathObject(parent);
+        }
+
+        boolean wasLocked = parent.isLocked();
+        parent.setLocked(true);
+        detections = detectObjects(imageData, parent.getROI());
+        if (cancelRuns) {
+            logger.warn("DeepCell detection cancelled for {}", parent);
+            if (!wasLocked)
+                parent.setLocked(false);
+            return;
+        }
+        parent.clearPathObjects();
+        parent.addPathObjects(detections);
+        if (fireUpdate)
+            imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy(), parent);
+
     }
 
 

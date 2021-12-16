@@ -4,12 +4,14 @@ mibi/segmentation/DeepCellToolbox/DeepWatershed.java
  mibi.segmentation.DeepCellToolbox.DeepWatershed$MaximaAlgorithms
 mibi/MIBIExtension.java
  mibi.MIBIExtension
-mibi/segmentation/SegmentationGUI.java
- mibi.segmentation.SegmentationGUI
-mibi/segmentation/DeepCell2D.java
- mibi.segmentation.DeepCell2D
- mibi.segmentation.DeepCell2D$Builder
- mibi.segmentation.DeepCell2D$PotentialCell
+mibi/stitch/GridStitchMacroOptions.java
+ mibi.stitch.GridStitchMacroOptions
+ mibi.stitch.GridStitchMacroOptions$ComputationParameter
+ mibi.stitch.GridStitchMacroOptions$FusionMethod
+ mibi.stitch.GridStitchMacroOptions$ImageOutput
+ mibi.stitch.GridStitchMacroOptions$Type
+qupath/opencv/ops/DeepCellPreprocessOp.java
+ qupath.opencv.ops.DeepCellPreprocessOp
 mibi/stitch/GridStitchGUI.java
  mibi.stitch.GridStitchGUI
  mibi.stitch.GridStitchGUI$1
@@ -20,17 +22,15 @@ mibi/gui/NodeTools.java
 qupath/opencv/ops/DeepCellImageOps.java
  qupath.opencv.ops.DeepCellImageOps
  qupath.opencv.ops.DeepCellImageOps$DeepCellChannelImageDataOp
-mibi/segmentation/TensorFlowModelLoadTest.java
- mibi.segmentation.TensorFlowModelLoadTest
 mibi/segmentation/CV_DTYPE.java
  mibi.segmentation.CV_DTYPE
  mibi.segmentation.CV_DTYPE$CV_FLOAT
  mibi.segmentation.CV_DTYPE$CV_SHORT
-qupath/opencv/ops/DeepCellPreprocessOp.java
- qupath.opencv.ops.DeepCellPreprocessOp
-mibi/stitch/GridStitchMacroOptions.java
- mibi.stitch.GridStitchMacroOptions
- mibi.stitch.GridStitchMacroOptions$ComputationParameter
- mibi.stitch.GridStitchMacroOptions$FusionMethod
- mibi.stitch.GridStitchMacroOptions$ImageOutput
- mibi.stitch.GridStitchMacroOptions$Type
+mibi/segmentation/SegmentationGUI.java
+ mibi.segmentation.SegmentationGUI
+mibi/segmentation/DeepCell2D.java
+ mibi.segmentation.DeepCell2D
+ mibi.segmentation.DeepCell2D$Builder
+ mibi.segmentation.DeepCell2D$PotentialCell
+mibi/segmentation/TensorFlowModelLoadTest.java
+ mibi.segmentation.TensorFlowModelLoadTest
