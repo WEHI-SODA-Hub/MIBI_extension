@@ -398,45 +398,4 @@ public class GridStitchGUI implements Runnable {
         return computationParameterComboBox;
     }
 
-
-    private TextField createNaturalNumberTextField(Scene scene, int defaultValue){
-        TextField tf = NodeTools.createNaturalNumberTextField();
-        tf.setMaxWidth(DEFAULT_TEXT_FIELD_WIDTH);
-        GridPane.setHalignment(tf, HPos.CENTER);
-        tf.setText(String.valueOf(defaultValue));
-
-        scene.addEventFilter(MouseEvent.MOUSE_CLICKED, evt -> {
-            if (tf.getText()==null || tf.getText().equals("")){
-                return;
-            }
-            if (!inHierarchy(evt.getPickResult().getIntersectedNode(), tf)) {
-                tf.setText(convertToNumericalString(tf.getText()));
-            }
-        });
-        return tf;
-    }
-
-    private TextField createPositiveRealTextField(Scene scene, double defaultValue){
-        TextField tf = NodeTools.createPositiveRealTextField();
-        tf.setMaxWidth(DEFAULT_TEXT_FIELD_WIDTH);
-        GridPane.setHalignment(tf, HPos.CENTER);
-        tf.setText(String.valueOf(defaultValue));
-
-        scene.addEventFilter(MouseEvent.MOUSE_CLICKED, evt -> {
-            if (tf.getText()==null || tf.getText().equals("")){
-                return;
-            }
-            if (!inHierarchy(evt.getPickResult().getIntersectedNode(), tf)) {
-                tf.setText(convertToNumericalString(tf.getText()));
-            }
-        });
-        return tf;
-    }
-
-    private CheckBox createCheckBox(boolean val){
-        CheckBox checkBox = new CheckBox();
-        checkBox.setSelected(val);
-        GridPane.setHalignment(checkBox, HPos.CENTER);
-        return checkBox;
-    }
 }

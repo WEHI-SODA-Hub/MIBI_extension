@@ -5,6 +5,7 @@ import ij.process.*;
 import inra.ijpb.binary.conncomp.FloodFillComponentsLabeling;
 import inra.ijpb.watershed.MarkerControlledWatershedTransform2D;
 import mibi.segmentation.CV_DTYPE;
+import mibi.segmentation.DeepCell2D;
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.ShortPointer;
 import org.bytedeco.opencv.opencv_core.Mat;
@@ -14,6 +15,8 @@ import org.bytedeco.opencv.opencv_core.Scalar;
 import org.bytedeco.opencv.opencv_core.Size;
 
 import inra.ijpb.morphology.Reconstruction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +39,7 @@ public class DeepWatershed {
         H_MAX
     }
     private double max_value = 1;
-
+    private final static Logger logger = LoggerFactory.getLogger(DeepWatershed.class);
     private int radius;
     private double maxima_threshold;
     private double interior_threshold;
@@ -147,8 +150,7 @@ public class DeepWatershed {
     public void hMaxima(Mat image, Mat localMaxima, double h, double maxVal, boolean safe) {
 
         if (!CV_DTYPE.CV_FLOAT.isDType(image.type())){
-            //TODO: Catch wrong input image
-            return;
+            throw new RuntimeException("Image has wrong data type for hmaxima. Should be subtype of CV_32F");
         }
 
         // resolution of the image type

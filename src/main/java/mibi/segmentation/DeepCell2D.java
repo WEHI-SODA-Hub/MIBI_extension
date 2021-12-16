@@ -8,9 +8,9 @@ import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
-import org.locationtech.jts.geom.Envelope;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.algorithm.Centroid;
+import org.locationtech.jts.algorithm.locate.SimplePointInAreaLocator;
+import org.locationtech.jts.geom.*;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +45,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -74,6 +76,8 @@ public class DeepCell2D {
     private boolean ignoreCellOverlaps;
     private boolean measureShape;
     private int nThreads = -1;
+
+    // TODO: Maybe implement in the future.
     private boolean constrainToParent = true;
 
     private double pixelSize;
@@ -83,12 +87,122 @@ public class DeepCell2D {
     private int pad =0;
     private ImageDataOp op;
     private double cellExpansion;
+
+    // TODO: Not quite sure if we need this
     private double cellConstrainScale = Double.NaN;
     private static final int defaultTileSize = 256;
 
     private double subtractiveFactor;
 
     private static int iter=0;
+
+
+
+    /**
+     * Detect cells within one or more parent objects, firing update events upon completion.
+     *
+     * @param imageData the image data containing the object
+     * @param parents the parent objects; existing child objects will be removed, and replaced by the detected cells
+     */
+    public void detectObjects(ImageData<BufferedImage> imageData, Collection<? extends PathObject> parents) {
+        runInPool(() -> detectObjectsImpl(imageData, parents));
+    }
+
+    private void detectObjectsImpl(ImageData<BufferedImage> imageData, Collection<? extends PathObject> parents) {
+
+        if (parents.isEmpty()){
+            detectObjects(imageData, null, true);
+            return;
+        }
+        if (parents.size() == 1) {
+            detectObjects(imageData, parents.iterator().next(), true);
+            return;
+        }
+        log("Processing {} parent objects", parents.size());
+        if (nThreads >= 0)
+            parents.stream().forEach(p -> detectObjects(imageData, p, false));
+        else
+            parents.parallelStream().forEach(p -> detectObjects(imageData, p, false));
+
+        // Fire a global update event
+        imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy());
+    }
+
+    /**
+     * Detect cells within a parent object.
+     *
+     * @param imageData the image data containing the object
+     * @param parent the parent object; existing child objects will be removed, and replaced by the detected cells
+     * @param fireUpdate if true, a hierarchy update will be fired on completion
+     */
+    public void detectObjects(ImageData<BufferedImage> imageData, PathObject parent, boolean fireUpdate) {
+        runInPool(() -> detectObjectsImpl(imageData, parent, fireUpdate));
+    }
+
+    /**
+     * Optionally submit runnable to a thread pool. This limits the parallelization used by parallel streams.
+     * @param runnable
+     */
+    private void runInPool(Runnable runnable) {
+        if (nThreads > 0) {
+            if (nThreads == 1)
+                log("Processing with {} thread", nThreads);
+            else
+                log("Processing with {} threads", nThreads);
+            // Using an outer thread poll impacts any parallel streams created inside
+            var pool = new ForkJoinPool(nThreads);
+            try {
+                pool.submit(() -> runnable.run());
+            } finally {
+                pool.shutdown();
+                try {
+                    pool.awaitTermination(24, TimeUnit.HOURS);
+                } catch (InterruptedException e) {
+                    logger.warn("Process was interrupted! " + e.getLocalizedMessage(), e);
+                }
+            }
+        } else {
+            runnable.run();
+        }
+    }
+
+
+
+
+
+    /**
+     * Detect cells within a parent object.
+     *
+     * @param imageData the image data containing the object
+     * @param parent the parent object; existing child objects will be removed, and replaced by the detected cells
+     * @param fireUpdate if true, a hierarchy update will be fired on completion
+     */
+    private void detectObjectsImpl(ImageData<BufferedImage> imageData, PathObject parent, boolean fireUpdate) {
+        List<PathObject> detections;
+        // Lock early, so the user doesn't make modifications
+        if (parent != null) {
+            boolean wasLocked = parent.isLocked();
+            parent.setLocked(true);
+            detections = detectObjects(imageData, parent.getROI());
+            if (cancelRuns) {
+                logger.warn("DeepCell detection cancelled for {}", parent);
+                if (!wasLocked)
+                    parent.setLocked(false);
+                return;
+            }
+            parent.clearPathObjects();
+            parent.addPathObjects(detections);
+            if (fireUpdate)
+                imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy(), parent);
+        }else
+            detections = detectObjects(imageData, (ROI) null);
+            imageData.getHierarchy().addPathObjects(detections);
+            if (fireUpdate)
+                imageData.getHierarchy().fireHierarchyChangedEvent(imageData.getHierarchy());
+    }
+
+
+
     /**
      * Detects Cells objects for the given imageData and roi
      * @param imageData The image to be segmented
@@ -113,9 +227,11 @@ public class DeepCell2D {
                 th - pad*2);
 
         RegionRequest request;
-        if (roi == null)
+        if (roi == null) {
             request = RegionRequest.createInstance(opServer);
-        else
+            roi = ROIs.createRectangleROI(0, 0, imageData.getServer().getWidth(), imageData.getServer().getHeight(), ImagePlane.getDefaultPlane());
+
+        }else
             request = RegionRequest.createInstance(
                     opServer.getPath(),
                     opServer.getDownsampleForResolution(0),
@@ -123,17 +239,15 @@ public class DeepCell2D {
 
         // Run DeepCell on tiled image
         var tiles = opServer.getTileRequestManager().getTileRequests(request);
-        var mask = roi == null ? null : roi.getGeometry();
+        var mask = roi.getGeometry();
 
 
         // Detect all potential nuclei
         var server = imageData.getServer();
         var cal = server.getPixelCalibration();
         double expansion = cellExpansion / cal.getAveragedPixelSize().doubleValue();
-        assert roi != null;
-
-        roi = ROIs.createRectangleROI(0,0,imageData.getServer().getWidth(), imageData.getServer().getHeight(), ImagePlane.getDefaultPlane());
         var plane = roi.getImagePlane();
+
 
         if (tiles.size() > 1)
             log("Detecting nuclei for {} tiles", tiles.size());
@@ -143,11 +257,10 @@ public class DeepCell2D {
 
 
         List<PotentialCell> allCells = new ArrayList<>();
-
-        for (TileRequest t: tiles) {
+        List<PotentialCell> finalAllCells = allCells;
+        tiles.parallelStream().forEach(t -> {
             if (mask == null || mask.intersects(GeometryTools.createRectangle(t.getImageX(), t.getImageY(), t.getImageWidth(), t.getImageHeight()))) {
-
-                allCells.addAll(Objects.requireNonNull(detectObjectsForTile(
+                finalAllCells.addAll(Objects.requireNonNull(detectObjectsForTile(
                         op,
                         dnn,
                         imageData,
@@ -155,11 +268,10 @@ public class DeepCell2D {
                         tiles.size() > 1,
                         mask
                 )));
-
-
             }
-        }
-        allCells = filterCells(allCells);
+            }
+        );
+        allCells = filterCells(finalAllCells);
 
         // Filter by size
         if (minNucleiArea > 0){
@@ -298,7 +410,8 @@ public class DeepCell2D {
                         matCell,
                         matNuclear,
                         requestPadded,
-                        padding
+                        padding,
+                        mask
                 );
             } catch(IOException e){
                 e.printStackTrace();
@@ -364,7 +477,8 @@ public class DeepCell2D {
             Mat cellLabels,
             Mat nucleiLabels,
             RegionRequest request,
-            Padding padding
+            Padding padding,
+            Geometry mask
     ) throws IOException {
 
         Mat croppedCell = new Mat();
@@ -416,6 +530,7 @@ public class DeepCell2D {
                 AtomicReference<Double> min_diff_X = new AtomicReference<>(Double.MAX_VALUE);
                 AtomicReference<Double> min_diff_Y = new AtomicReference<>(Double.MAX_VALUE);
 
+                ROI finalRoi_nuclei = roi_nuclei;
                 roisIJ_membrane.forEach(roi -> {
                             if (roi != null) {
 
@@ -429,8 +544,8 @@ public class DeepCell2D {
 
                                 var X = membrane.getCentroidX();
                                 var Y = membrane.getCentroidY();
-                                var diff_X = X - (roi_nuclei.getCentroidX());
-                                var diff_Y = Y - (roi_nuclei.getCentroidY());
+                                var diff_X = X - (finalRoi_nuclei.getCentroidX());
+                                var diff_Y = Y - (finalRoi_nuclei.getCentroidY());
 
                                 if (Math.abs(diff_X) < 2 && Math.abs(diff_Y) < 2){
                                     roi_membrane.set(membrane);
@@ -446,29 +561,33 @@ public class DeepCell2D {
                             }
                         }
                 );
-
+                roi_nuclei = finalRoi_nuclei;
                 Geometry geomCell;
-                // TODO: Log the error for this membrane
                 if (roi_membrane.get() == null) {
                     geomCell = CellTools.estimateCellBoundary(
                             GeometryTools.roiToGeometry(roi_nuclei),
                             cellExpansion * 2,
-                            1);
+                            cellConstrainScale);
                 } else{
                     roisIJ_membrane.remove(roi_membrane.get());
                     geomCell = CellTools.estimateCellBoundary(
                             GeometryTools.roiToGeometry(roi_membrane.get()),
                             cellExpansion,
-                            1);
+                            cellConstrainScale);
                 }
                 int z = 0;
                 int t = 0;
                 var plane = ImagePlane.getPlane(z, t);
                 var roiCell = GeometryTools.geometryToROI(geomCell, plane);
-                var detection = new PotentialCell(roiCell.translate(request.getX(), request.getY()).getGeometry(),
-                        roi_nuclei.translate(request.getX(), request.getY()).getGeometry());
 
-                detections.add(detection);
+                roiCell = roiCell.translate(request.getX(), request.getY());
+                roi_nuclei = roi_nuclei.translate(request.getX(), request.getY());
+                var locator = mask == null ? null : new SimplePointInAreaLocator(mask);
+                if (locator == null || locator.locate(new Coordinate(roiCell.getCentroidX(), roiCell.getCentroidY())) != Location.EXTERIOR) {
+                    var detection = new PotentialCell(roiCell.getGeometry(), roi_nuclei.getGeometry()
+                            );
+                    detections.add(detection);
+                }
             }
 
 
@@ -656,23 +775,24 @@ public class DeepCell2D {
         private ColorTransform nucleiChannel;
         private ColorTransform[] membraneChannels = new ColorTransform[0];
 
-        private boolean ignoreCellOverlaps = false;
+        private int minNucleiArea = 100;
 
-        private int minNucleiArea = -1;
-
-
-        private boolean constrainToParent = false;
         private int nThreads = -1;
         private List<Measurements> measurements;
         private boolean measureShape = true;
-        private List<Compartments> compartments = Arrays.asList(Compartments.values());
-        private double cellExpansion = 3;
-        private double cellConstrainScale;
-        private double pixelSize = Double.NaN;
+
+        // Might need to change
+        private double cellConstrainScale = Double.NaN;
+
         private int pad = 64;
-
         private double subtractiveFactor = 0.001;
+        private double cellExpansion = 3;
 
+        //TODO: Not urgent. Do when you have time
+        private List<Compartments> compartments = Arrays.asList(Compartments.values());
+        private boolean constrainToParent = false;
+        private boolean ignoreCellOverlaps = false;
+        private double pixelSize = Double.NaN;
 
         public Builder modelPath(String modelPath){
             this.modelPath = new File(modelPath);
@@ -747,6 +867,10 @@ public class DeepCell2D {
         public Builder membraneChannels(ColorTransform... channels) {
             this.membraneChannels = channels.clone();
             return this;
+        }
+
+        public Builder membraneChannels(List<String> channels){
+            return membraneChannels(channels.stream().map(ColorTransforms::createChannelExtractor).toArray(ColorTransform[]::new));
         }
 
         /**
@@ -923,7 +1047,7 @@ public class DeepCell2D {
             } catch(Exception e){
                 logger.error("Unable to load TensorFlow with reflection - are you sure it is available and on the classpath?");
                 logger.error(e.getLocalizedMessage(), e);
-                throw new RuntimeException("Unable to load StarDist model from " + modelPath, e);
+                throw new RuntimeException("Unable to load DeepCell model from " + modelPath, e);
             }
 
             // Extract the input and output information
@@ -942,7 +1066,9 @@ public class DeepCell2D {
                     .collect(Collectors
                             .toCollection(ArrayList::new));
             // Make sure the model has the correct number of outputs
-            assert deepCell2D.outputTensorInfo.size() == 4;
+            if(deepCell2D.outputTensorInfo.size() != 4){
+                throw new RuntimeException("Model does not have 4 outputs. Are you sure it is the DeepCell model?");
+            }
 
 
 
@@ -950,6 +1076,15 @@ public class DeepCell2D {
             mergedOps.add(DeepCellPreprocessOp.preprocess());
             // ImageOps.buildImageDataOp(channels) is the operation to extract the channels
             // Also includes any other image operations the user has specified
+
+            if (membraneChannels.length < 1){
+                throw new RuntimeException("Please select at least one membrane channel!");
+            }
+
+            if (nucleiChannel == null){
+                throw new RuntimeException("Please select a nuclei channel!");
+            }
+
             deepCell2D.op = DeepCellImageOps.buildImageDataOps(nucleiChannel, membraneChannels)
                     .appendOps(mergedOps.toArray(ImageOp[]::new));
 
@@ -981,5 +1116,7 @@ public class DeepCell2D {
             return deepCell2D;
         }
     }
+
+
 
 }

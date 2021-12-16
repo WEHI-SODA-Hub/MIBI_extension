@@ -1,12 +1,11 @@
 package mibi.gui;
 
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -146,6 +145,47 @@ public class NodeTools {
         gridPane.setHgap(5);
         gridPane.setPadding(new Insets(10, 10, 10, 10));
         return gridPane;
+    }
+
+    public static TextField createPositiveRealTextField(Scene scene, double defaultValue){
+        TextField tf = NodeTools.createPositiveRealTextField();
+        tf.setMaxWidth(DEFAULT_TEXT_FIELD_WIDTH);
+        GridPane.setHalignment(tf, HPos.CENTER);
+        tf.setText(String.valueOf(defaultValue));
+
+        scene.addEventFilter(MouseEvent.MOUSE_CLICKED, evt -> {
+            if (tf.getText()==null || tf.getText().equals("")){
+                return;
+            }
+            if (!inHierarchy(evt.getPickResult().getIntersectedNode(), tf)) {
+                tf.setText(convertToNumericalString(tf.getText()));
+            }
+        });
+        return tf;
+    }
+
+    public static CheckBox createCheckBox(boolean val){
+        CheckBox checkBox = new CheckBox();
+        checkBox.setSelected(val);
+        GridPane.setHalignment(checkBox, HPos.CENTER);
+        return checkBox;
+    }
+
+    public static TextField createNaturalNumberTextField(Scene scene, int defaultValue){
+        TextField tf = NodeTools.createNaturalNumberTextField();
+        tf.setMaxWidth(DEFAULT_TEXT_FIELD_WIDTH);
+        GridPane.setHalignment(tf, HPos.CENTER);
+        tf.setText(String.valueOf(defaultValue));
+
+        scene.addEventFilter(MouseEvent.MOUSE_CLICKED, evt -> {
+            if (tf.getText()==null || tf.getText().equals("")){
+                return;
+            }
+            if (!inHierarchy(evt.getPickResult().getIntersectedNode(), tf)) {
+                tf.setText(convertToNumericalString(tf.getText()));
+            }
+        });
+        return tf;
     }
 
 }

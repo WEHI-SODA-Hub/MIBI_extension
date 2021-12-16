@@ -49,8 +49,10 @@ public class TensorFlowModelLoadTest implements Runnable  {
                     .nucleiChannel(21)
                     .membraneChannels(29, 32)
                     .minNucleiArea(100)
+                    .measureIntensity()
+                    .measureShape()
                     .build();
-            var cells = deep.detectObjects(imageData, null);
+            var cells = deep.detectObjects(imageData, (ROI) null);
 
 
             imageData.getHierarchy().addPathObjects(cells);

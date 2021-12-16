@@ -1,5 +1,6 @@
 package mibi;
 
+import mibi.segmentation.SegmentationGUI;
 import mibi.segmentation.TensorFlowModelLoadTest;
 import mibi.stitch.GridStitchGUI;
 
@@ -18,7 +19,7 @@ public class MIBIExtension implements QuPathExtension {
                 qupath.getMenu("Extensions>MIBI Extension", true),
                 stitchWindow);
 
-        Action segmentationWindow = ActionTools.createAction(new TensorFlowModelLoadTest(qupath), "Segmentation");
+        Action segmentationWindow = ActionTools.createAction(new SegmentationGUI(qupath), "Segmentation");
         MenuTools.addMenuItems(
                 qupath.getMenu("Extensions>MIBI Extension", true),
                 segmentationWindow);
