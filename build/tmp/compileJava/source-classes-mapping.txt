@@ -28,9 +28,9 @@ mibi/stitch/GridStitchGUI.java
  mibi.stitch.GridStitchGUI$1
  mibi.stitch.GridStitchGUI$2
  mibi.stitch.GridStitchGUI$3
+mibi/segmentation/TensorFlowModelLoadTest.java
+ mibi.segmentation.TensorFlowModelLoadTest
 mibi/MIBIExtension.java
  mibi.MIBIExtension
 mibi/segmentation/SegmentationGUI.java
  mibi.segmentation.SegmentationGUI
-mibi/segmentation/TensorFlowModelLoadTest.java
- mibi.segmentation.TensorFlowModelLoadTest
