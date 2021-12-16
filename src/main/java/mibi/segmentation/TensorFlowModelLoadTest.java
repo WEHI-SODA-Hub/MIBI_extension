@@ -53,12 +53,7 @@ public class TensorFlowModelLoadTest implements Runnable  {
                     .measureShape()
                     .build();
             var cells = deep.detectObjects(imageData, (ROI) null);
-
-
             imageData.getHierarchy().addPathObjects(cells);
-
-
-
         });
         grid.add(button, 0,0);
         stage.setScene(new Scene(grid));

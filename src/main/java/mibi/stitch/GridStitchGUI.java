@@ -39,16 +39,16 @@ public class GridStitchGUI implements Runnable {
     private Stage stage;
     private GridStitchMacroOptions options;
     private static final String TITLE = "Grid Stitch";
-
-    public GridStitchGUI(){
-
+    private QuPathGUI qupath;
+    public GridStitchGUI(QuPathGUI qupath){
+        this.qupath = qupath;
     }
 
     public void createStage(){
         stage = new Stage();
         stage.resizableProperty().set(false);
         stage.setTitle(TITLE);
-        stage.setAlwaysOnTop(true);
+        stage.initOwner(qupath.getStage());
         options = new GridStitchMacroOptions();
         GridPane gridPane = createGridPane();
         Scene scene = new Scene(gridPane);

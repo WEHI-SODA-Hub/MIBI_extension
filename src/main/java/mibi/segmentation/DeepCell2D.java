@@ -800,6 +800,11 @@ public class DeepCell2D {
         private boolean ignoreCellOverlaps = false;
         private double pixelSize = Double.NaN;
 
+
+        public Builder modelPath(File modelPath){
+            this.modelPath = modelPath;
+            return this;
+        }
         public Builder modelPath(String modelPath){
             this.modelPath = new File(modelPath);
             return this;

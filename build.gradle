@@ -48,6 +48,9 @@ test {
 }
 
 jar {
+    from('src/main/resources') {
+        include 'config/model/MultiplexSegmentation'
+    }
     manifest {
         attributes 'Main-Class' : ''
         attributes 'Implementation-Title': 'MIBI Extension',

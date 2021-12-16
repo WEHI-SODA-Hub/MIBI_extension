@@ -1,26 +1,32 @@
 package mibi.segmentation;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
-import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
+import qupath.lib.images.ImageData;
 import qupath.lib.images.servers.ImageChannel;
-import qupath.lib.roi.interfaces.ROI;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.Buffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static mibi.gui.NodeTools.*;
 
-public class SegmentationGUI implements Runnable {
+public class SegmentationGUI implements Runnable, ChangeListener<ImageData<BufferedImage>> {
 
     private Stage stage;
     private final String TITLE = "DeepCell";
@@ -29,10 +35,16 @@ public class SegmentationGUI implements Runnable {
     private DeepCell2D.Builder builder;
 
     private List<String> membraneList = new ArrayList<>();
+    private ComboBox<String> nucleiComboBox;
+    private ComboBox<String> membraneComboBox;
+    private TextField membraneTextField;
 
+    private HashMap<ImageData<BufferedImage>, String> nucleiMap = new HashMap<>();
+    private HashMap<ImageData<BufferedImage>, List<String>> membraneMap = new HashMap<>();
 
     public SegmentationGUI(QuPathGUI qupath){
         this.qupath = qupath;
+        qupath.getViewer().imageDataProperty().addListener(this);
     }
 
 
@@ -51,7 +63,7 @@ public class SegmentationGUI implements Runnable {
         }
         if (stage == null){
             createStage();
-            stage.setAlwaysOnTop(true);
+            stage.initOwner(qupath.getStage());;
         }
         stage.show();
     }
@@ -68,23 +80,40 @@ public class SegmentationGUI implements Runnable {
         GridPane gridPane = createGridPane();
         var scene = new Scene(gridPane);
 
+        var modelPathLabel = createLabel("Select model folder");
+        var modelPathChoose = new Button("Choose model");
+        var modelTextField = new TextField();
+        modelTextField.setEditable(false);
+        modelTextField.setMaxWidth(Double.MAX_VALUE);
+        AtomicReference<File> folder = new AtomicReference<>();
+        modelPathChoose.setOnAction(e -> {
+                    folder.set(Dialogs.promptForDirectory(null));
+                    if (folder.get() != null)
+                        modelTextField.setText(folder.get().getAbsolutePath());
+                    }
+                );
+        HBox modelHBox = createHBox(modelTextField, modelPathChoose);
+        gridPane.add(modelPathLabel, 0, i);
+        gridPane.add(modelHBox, 1, i);
+        i++;
+
         var nucleiLabel = createLabel("Select nuclei channel");
         var channels = FXCollections.observableArrayList(
                 qupath.getImageData().getServer().getMetadata().getChannels().stream().map(ImageChannel::getName).collect(Collectors.toList())
         );
-        var nucleiComboBox = new ComboBox<>(channels);
+        nucleiComboBox = new ComboBox<>(channels);
         gridPane.add(nucleiLabel, 0, i);
         gridPane.add(nucleiComboBox, 1, i);
         i++;
 
         var membraneLabel = createLabel("Select membrane channels");
-        var textField = new TextField();
+        membraneTextField = new TextField();
         if (membraneList.size() > 0) {
             String text = membraneList.toString();
-            textField.setText(text.substring(1, text.length()-1));
+            membraneTextField.setText(text.substring(1, text.length()-1));
         }
-        textField.setEditable(false);
-        var membraneComboBox = new ComboBox<>(channels);
+        membraneTextField.setEditable(false);
+        membraneComboBox = new ComboBox<>(channels);
         Button add = new Button("+");
         Button minus = new Button("-");
 
@@ -93,7 +122,7 @@ public class SegmentationGUI implements Runnable {
             if (!membraneList.contains(selected)){
                 membraneList.add(selected);
                 String text = membraneList.toString();
-                textField.setText(text.substring(1, text.length() - 1));
+                membraneTextField.setText(text.substring(1, text.length() - 1));
             }
         });
 
@@ -102,7 +131,7 @@ public class SegmentationGUI implements Runnable {
             if (membraneList.contains(selected)){
                 membraneList.remove(selected);
                 String text = membraneList.toString();
-                textField.setText(text.substring(1, text.length()-1));
+                membraneTextField.setText(text.substring(1, text.length()-1));
             };
         });
         HBox cell = createHBox(membraneComboBox, add, minus);
@@ -113,7 +142,7 @@ public class SegmentationGUI implements Runnable {
 
         var membraneListLabel = createLabel("Selected membrane channels");
         gridPane.add(membraneListLabel, 0, i);
-        gridPane.add(textField, 1, i);
+        gridPane.add(membraneTextField, 1, i);
         i++;
 
         var separator = new Separator();
@@ -196,6 +225,7 @@ public class SegmentationGUI implements Runnable {
                 builder = DeepCell2D.builder();
             }
             builder
+                    .modelPath(folder.get())
                     .nucleiChannel(nucleiComboBox.getValue())
                     .membraneChannels(membraneList)
                     .minNucleiArea(Integer.parseInt(minNucAreaTextField.getText()))
@@ -226,9 +256,46 @@ public class SegmentationGUI implements Runnable {
 
         });
 
+        var refreshButton = new Button("Refresh window");
+        refreshButton.setOnAction(e -> {
+            changed(null, qupath.getImageData(), qupath.getImageData());
+        });
+        refreshButton.setMaxWidth(Double.MAX_VALUE);
+        gridPane.add(refreshButton, 0, i, 2, 1);
+
         stage.setScene(scene);
     }
 
+
+    @Override
+    public void changed(ObservableValue<? extends ImageData<BufferedImage>> observableValue,
+                        ImageData<BufferedImage> oldIm, ImageData<BufferedImage> newIm) {
+        if (nucleiComboBox != null && membraneComboBox != null) {
+
+            nucleiMap.put(oldIm, nucleiComboBox.getValue());
+            membraneMap.put(oldIm, membraneList);
+
+            var channels = FXCollections.observableArrayList(
+                    newIm.getServer().getMetadata().getChannels().stream().map(ImageChannel::getName).collect(Collectors.toList())
+            );
+
+            nucleiComboBox.setItems(channels);
+            membraneComboBox.setItems(channels);
+            membraneTextField.setText("");
+
+            var nucleiNew = nucleiMap.getOrDefault(newIm, null);
+            var membraneNew = membraneMap.getOrDefault(newIm, null);
+
+            if (nucleiNew != null){
+                nucleiComboBox.setValue(nucleiNew);
+            }
+            if (membraneNew != null){
+                String text = membraneNew.toString();
+                membraneTextField.setText(text.substring(1, text.length()-1));
+                membraneList = membraneNew;
+            }
+        }
+    }
 
 
 }

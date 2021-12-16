@@ -14,7 +14,7 @@ import qupath.lib.gui.tools.MenuTools;
 public class MIBIExtension implements QuPathExtension {
     @Override
     public void installExtension(QuPathGUI qupath) {
-        Action stitchWindow = ActionTools.createAction(new GridStitchGUI(), "Stitching");
+        Action stitchWindow = ActionTools.createAction(new GridStitchGUI(qupath), "Stitching");
         MenuTools.addMenuItems(
                 qupath.getMenu("Extensions>MIBI Extension", true),
                 stitchWindow);
