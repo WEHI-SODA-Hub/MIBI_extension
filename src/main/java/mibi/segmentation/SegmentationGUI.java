@@ -249,6 +249,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                 var imageData = qupath.getImageData();
                 var pathObjects = qupath.getImageData().getHierarchy().getSelectionModel().getSelectedObjects();
                 deepCell.detectObjects(imageData, pathObjects);
+                Dialogs.showInfoNotification(TITLE, "Done!");
             }catch(RuntimeException exception){
                 Dialogs.showErrorNotification(TITLE, exception);
             }
@@ -281,19 +282,20 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
 
             nucleiComboBox.setItems(channels);
             membraneComboBox.setItems(channels);
-            membraneTextField.setText("");
 
             var nucleiNew = nucleiMap.getOrDefault(newIm, null);
-            var membraneNew = membraneMap.getOrDefault(newIm, null);
+            var membraneNew = membraneMap.getOrDefault(newIm, new ArrayList<>());
 
-            if (nucleiNew != null){
-                nucleiComboBox.setValue(nucleiNew);
-            }
-            if (membraneNew != null){
-                String text = membraneNew.toString();
+
+            nucleiComboBox.setValue(nucleiNew);
+
+            String text = membraneNew.toString();
+            if (text.length() > 0)
                 membraneTextField.setText(text.substring(1, text.length()-1));
-                membraneList = membraneNew;
-            }
+            else
+                membraneTextField.setText("");
+            membraneList = membraneNew;
+
         }
     }
 

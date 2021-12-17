@@ -8,7 +8,7 @@ plugins {
 
 
 group 'com.github.qupath'
-version '1.0-SNAPSHOT'
+version '1.0-SNAPSHOT-Mac'
 
 allprojects {
     repositories {
@@ -27,9 +27,9 @@ dependencies {
 //    implementation "com.github.qupath:qupath-extension-tensorflow:0.3.0"
 
     shadow files("/Users/yokote.k/QuPath/v0.3/oldExtensions/qupath-extension-tensorflow-0.3.0.jar")
-    shadow 'org.bytedeco:javacv-platform:1.5.7-SNAPSHOT'
+    implementation 'org.bytedeco:javacv-platform:1.5.7-SNAPSHOT'
 //    shadow 'org.bytedeco:javacpp:1.5.5'
-    shadow 'org.bytedeco:javacpp-presets-platform:1.5.5'
+    implementation 'org.bytedeco:javacpp-presets-platform:1.5.5'
     shadow 'org.tensorflow:tensorflow-core-platform:0.4.0'
 
     implementation fileTree(dir: '/Users/yokote.k/Desktop/QuPath-0.3.0.app/Contents/app/', include: '*.jar')
