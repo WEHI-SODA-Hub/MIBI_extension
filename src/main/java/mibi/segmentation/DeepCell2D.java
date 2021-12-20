@@ -519,9 +519,9 @@ public class DeepCell2D {
             var cpt = 0;
 
             // Iterate through the membrane rois
-            for (var nucl : roisIJ_nuclei) {
+            roisIJ_nuclei.parallelStream().forEach(nucl -> {
                 if (nucl == null) {
-                    continue;
+                    return;
                 }
 
 //                roi.setLocation(roi.getXBase() + request.getX() * request.getDownsample(), roi.getYBase() + request.getY() * request.getDownsample());
@@ -537,7 +537,7 @@ public class DeepCell2D {
                 AtomicReference<Double> min_diff_Y = new AtomicReference<>(Double.MAX_VALUE);
 
                 ROI finalRoi_nuclei = roi_nuclei;
-                roisIJ_membrane.forEach(roi -> {
+                roisIJ_membrane.parallelStream().forEach(roi -> {
                             if (roi != null) {
 
 //                                nucl.setLocation(nucl.getXBase() + request.getX() * request.getDownsample(), nucl.getYBase() + request.getY() * request.getDownsample());
@@ -594,7 +594,7 @@ public class DeepCell2D {
                             );
                     detections.add(detection);
                 }
-            }
+            });
 
 
 
@@ -772,8 +772,7 @@ public class DeepCell2D {
 
     public static class Builder{
 
-        private static String[] pathNames = { "src", "main", "resources", "model", "MultiplexSegmentation" };
-        private File modelPath = new File(String.join(File.separator, pathNames));
+        private File modelPath;
 
         private List<ImageOp> ops = new ArrayList<>();
         private boolean doLog = false;
@@ -781,7 +780,7 @@ public class DeepCell2D {
         private ColorTransform nucleiChannel;
         private ColorTransform[] membraneChannels = new ColorTransform[0];
 
-        private int minNucleiArea = 100;
+        private int minNucleiArea = 0;
 
         private int nThreads = -1;
         private List<Measurements> measurements;
@@ -1039,6 +1038,9 @@ public class DeepCell2D {
 
             var deepCell2D = new DeepCell2D();
             var mergedOps = new ArrayList<>(ops);
+
+            if (modelPath == null)
+                throw new IllegalArgumentException("Model Path is NULL");
 
             // Check that the folder exists
             if (!modelPath.exists()) {

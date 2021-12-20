@@ -4,12 +4,15 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
+import org.apache.commons.math3.util.Precision;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.images.ImageData;
@@ -39,8 +42,8 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
     private ComboBox<String> membraneComboBox;
     private TextField membraneTextField;
 
-    private HashMap<ImageData<BufferedImage>, String> nucleiMap = new HashMap<>();
-    private HashMap<ImageData<BufferedImage>, List<String>> membraneMap = new HashMap<>();
+    private HashMap<String, String> nucleiMap = new HashMap<>();
+    private HashMap<String, List<String>> membraneMap = new HashMap<>();
 
     public SegmentationGUI(QuPathGUI qupath){
         this.qupath = qupath;
@@ -172,7 +175,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
 
 
         var minNucAreaLabel = createLabel("Minimum nuclei area (px^2)");
-        var minNucAreaTextField = createNaturalNumberTextField(scene, 100);
+        var minNucAreaTextField = createNaturalNumberTextField(scene, 0);
         gridPane.add(minNucAreaLabel, 0, i);
         gridPane.add(minNucAreaTextField, 1, i);
         i++;
@@ -195,13 +198,6 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         gridPane.add(paddingTextField, 1,i);
         i++;
 
-        var subtractiveFactorLabel = createLabel("Subtractive Factor");
-        var subtractiveFactorTextField = createPositiveRealTextField(scene, 0.001);
-        gridPane.add(subtractiveFactorLabel,0,i);
-        gridPane.add(subtractiveFactorTextField, 1,i);
-        i++;
-
-
         var nThreadsLabel = createLabel("Number of Threads");
         var nThreadsTextField = createNaturalNumberTextField(scene, 1);
         gridPane.add(nThreadsLabel, 0,i );
@@ -213,6 +209,41 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         separator3.setMaxWidth(Double.MAX_VALUE);
         gridPane.add(separator3, 0, i, 2, 1);
         i++;
+
+
+        var subtractiveFactorLabel = createLabel("Segmentation Level");
+        var segmentationSlider = new Slider();
+        segmentationSlider.setMax(10);
+        segmentationSlider.setMin(0);
+        segmentationSlider.setValue(5);
+        segmentationSlider.setShowTickMarks(true);
+        segmentationSlider.valueProperty().addListener((obs, oldval, newVal) ->
+                segmentationSlider.setValue(Math.round(newVal.doubleValue())));
+//        var subtractiveFactorTextField = createNaturalNumberTextField(scene, 5);
+//        createSliderTextFieldPair(segmentationSlider, subtractiveFactorTextField);
+
+        var segmentationLabel = createLabel("<< Less segmentation     More segmentation >>");
+
+
+        gridPane.add(subtractiveFactorLabel,0,i);
+//        gridPane.add(subtractiveFactorTextField, 1,i);
+        i++;
+
+        gridPane.add(segmentationSlider, 0, i, 2, 1);
+        i++;
+
+        var segmentationBox = createHBox(segmentationLabel);
+        segmentationBox.setAlignment(Pos.CENTER);
+        segmentationLabel.setAlignment(Pos.CENTER);
+        gridPane.add(segmentationBox, 0, i, 2,1);
+        i++;
+
+        var separator4 = new Separator();
+        separator4.setOrientation(Orientation.HORIZONTAL);
+        separator4.setMaxWidth(Double.MAX_VALUE);
+        gridPane.add(separator4, 0, i, 2, 1);
+        i++;
+
 
 
         var runButton = new Button("Run Segmentation");
@@ -244,6 +275,17 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                 builder.nThreads(Integer.parseInt(nThreadsTextField.getText()));
             }
 
+            // Kind of a funky way to do it. Controls the amount of segmentation.
+            // Max subtractive factor is 0.9 and min is 0. Piecewise linear function.
+            if (Precision.equals(segmentationSlider.getValue(), 0)){
+                builder.subtractiveFactor(0);
+            } else if (segmentationSlider.getValue() < 5){
+                builder.subtractiveFactor(0.0002 * segmentationSlider.getValue());
+            } else {
+                builder.subtractiveFactor(0.2 * (0.9 - 0.001) * segmentationSlider.getValue() + 2 * 0.001 - 0.9);
+            }
+
+
             try {
                 var deepCell = builder.build();
                 var imageData = qupath.getImageData();
@@ -273,8 +315,8 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                         ImageData<BufferedImage> oldIm, ImageData<BufferedImage> newIm) {
         if (nucleiComboBox != null && membraneComboBox != null) {
 
-            nucleiMap.put(oldIm, nucleiComboBox.getValue());
-            membraneMap.put(oldIm, membraneList);
+            nucleiMap.put(oldIm.getServerPath(), nucleiComboBox.getValue());
+            membraneMap.put(oldIm.getServerPath(), membraneList);
 
             var channels = FXCollections.observableArrayList(
                     newIm.getServer().getMetadata().getChannels().stream().map(ImageChannel::getName).collect(Collectors.toList())
@@ -283,8 +325,8 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
             nucleiComboBox.setItems(channels);
             membraneComboBox.setItems(channels);
 
-            var nucleiNew = nucleiMap.getOrDefault(newIm, null);
-            var membraneNew = membraneMap.getOrDefault(newIm, new ArrayList<>());
+            var nucleiNew = nucleiMap.getOrDefault(newIm.getServerPath(), null);
+            var membraneNew = membraneMap.getOrDefault(newIm.getServerPath(), new ArrayList<>());
 
 
             nucleiComboBox.setValue(nucleiNew);
