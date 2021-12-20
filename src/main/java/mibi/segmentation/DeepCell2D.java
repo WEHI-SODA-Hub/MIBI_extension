@@ -5,6 +5,7 @@ import ij.process.ImageProcessor;
 import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
+import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
@@ -404,6 +405,12 @@ public class DeepCell2D {
 
 
             var formattedOutput = formatOutput(output);
+            String path1 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole" + iter + ".tif";
+            opencv_imgcodecs.imwrite(path1, formattedOutput.get("whole-cell").get(0));
+
+            String path2 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc" + iter + ".tif";
+            opencv_imgcodecs.imwrite(path2, formattedOutput.get("nuclear").get(0));
+            iter++;
 
             Mat matCell = new Mat();
             Mat matNuclear = new Mat();
