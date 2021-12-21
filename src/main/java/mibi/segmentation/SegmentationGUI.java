@@ -86,6 +86,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         var modelPathLabel = createLabel("Select model folder");
         var modelPathChoose = new Button("Choose model");
         var modelTextField = new TextField();
+
         modelTextField.setEditable(false);
         modelTextField.setMaxWidth(Double.MAX_VALUE);
         AtomicReference<File> folder = new AtomicReference<>();
@@ -96,6 +97,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                     }
                 );
         HBox modelHBox = createHBox(modelTextField, modelPathChoose);
+        modelHBox.setMaxWidth(Double.MAX_VALUE); 
         gridPane.add(modelPathLabel, 0, i);
         gridPane.add(modelHBox, 1, i);
         i++;
@@ -105,6 +107,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                 qupath.getImageData().getServer().getMetadata().getChannels().stream().map(ImageChannel::getName).collect(Collectors.toList())
         );
         nucleiComboBox = new ComboBox<>(channels);
+        nucleiComboBox.setMaxWidth(Double.MAX_VALUE);
         gridPane.add(nucleiLabel, 0, i);
         gridPane.add(nucleiComboBox, 1, i);
         i++;
@@ -117,6 +120,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         }
         membraneTextField.setEditable(false);
         membraneComboBox = new ComboBox<>(channels);
+        membraneComboBox.setMaxWidth(Double.MAX_VALUE);
         Button add = new Button("+");
         Button minus = new Button("-");
 
@@ -313,31 +317,35 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
     @Override
     public void changed(ObservableValue<? extends ImageData<BufferedImage>> observableValue,
                         ImageData<BufferedImage> oldIm, ImageData<BufferedImage> newIm) {
-        if (nucleiComboBox != null && membraneComboBox != null) {
-
-            nucleiMap.put(oldIm.getServerPath(), nucleiComboBox.getValue());
-            membraneMap.put(oldIm.getServerPath(), membraneList);
+        if (newIm !=null && nucleiComboBox != null && membraneComboBox != null) {
+            if (oldIm != null) {
+                nucleiMap.put(oldIm.getServerPath(), nucleiComboBox.getValue());
+                membraneMap.put(oldIm.getServerPath(), membraneList);
+            }
 
             var channels = FXCollections.observableArrayList(
-                    newIm.getServer().getMetadata().getChannels().stream().map(ImageChannel::getName).collect(Collectors.toList())
+                    newIm.getServer().getMetadata().getChannels().stream().map(ImageChannel::getName)
+                            .collect(Collectors.toList())
             );
 
             nucleiComboBox.setItems(channels);
             membraneComboBox.setItems(channels);
 
-            var nucleiNew = nucleiMap.getOrDefault(newIm.getServerPath(), null);
-            var membraneNew = membraneMap.getOrDefault(newIm.getServerPath(), new ArrayList<>());
+            membraneList = membraneMap.getOrDefault(newIm.getServerPath(), new ArrayList<>());
+            nucleiComboBox.setValue(nucleiMap.getOrDefault(newIm.getServerPath(), null));
 
-
-            nucleiComboBox.setValue(nucleiNew);
-
-            String text = membraneNew.toString();
-            if (text.length() > 0)
-                membraneTextField.setText(text.substring(1, text.length()-1));
-            else
+            String text = membraneList.toString();
+            if (membraneList.size() > 0) {
+                membraneTextField.setText(text.substring(1, text.length() - 1));
+                membraneComboBox.setValue(membraneList.get(membraneList.size()-1));
+            }else
                 membraneTextField.setText("");
-            membraneList = membraneNew;
-
+        } else if(newIm == null && nucleiComboBox != null && membraneComboBox != null){
+            nucleiComboBox.setItems(FXCollections.observableArrayList());
+            membraneComboBox.setItems(FXCollections.observableArrayList());
+            nucleiComboBox.setValue(null);
+            membraneComboBox.setValue(null);
+            membraneTextField.setText("");
         }
     }
 

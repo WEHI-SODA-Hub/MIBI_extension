@@ -5,7 +5,9 @@ import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.MatVector;
+import org.bytedeco.opencv.opencv_core.Scalar;
 import org.bytedeco.opencv.opencv_imgproc.CLAHE;
+import qupath.lib.gui.dialogs.Dialogs;
 
 import static org.bytedeco.opencv.global.opencv_core.CV_16UC1;
 import static org.bytedeco.opencv.global.opencv_core.CV_32F;
@@ -16,6 +18,9 @@ import static org.bytedeco.opencv.global.opencv_core.CV_32F;
  * This may have affects on performance later on.
  */
 public class DeepCellPreprocessOp implements ImageOp {
+
+    // Might need to change perhaps
+    private static final double PRECISION = 0.01;
 
     public static DeepCellPreprocessOp preprocess(){
         return new DeepCellPreprocessOp();
@@ -47,7 +52,15 @@ public class DeepCellPreprocessOp implements ImageOp {
             mat.convertTo(mat, CV_32F);
 
             opencv_core.minMaxLoc(mat, min, max, null, null, null);
-            mat.convertTo(mat, mat.type(), 1 / (max.get()-min.get()), -1 * min.get() / (max.get()-min.get()));
+
+            // If the image is more or less just a constant value
+
+            if (Math.abs(min.get() - max.get()) < PRECISION) {
+                var zeroMat = new Mat(mat.rows(), mat.cols(), mat.type(), new Scalar(0));
+                zeroMat.copyTo(mat);
+            }
+            else
+                mat.convertTo(mat, mat.type(), 1 / (max.get()-min.get()), -1 * min.get() / (max.get()-min.get()));
 
         }
         opencv_core.merge(matvec, input);

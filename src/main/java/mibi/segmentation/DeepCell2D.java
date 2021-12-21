@@ -27,6 +27,7 @@ import qupath.imagej.tools.IJTools;
 import qupath.lib.analysis.features.ObjectMeasurements;
 import qupath.lib.analysis.features.ObjectMeasurements.*;
 import qupath.lib.common.GeneralTools;
+import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.images.ImageData;
 import qupath.lib.images.servers.*;
 import qupath.lib.images.servers.ColorTransforms.ColorTransform;
@@ -279,7 +280,7 @@ public class DeepCell2D {
             }
         );
         allCells = filterCells(finalAllCells);
-
+//        allCells = finalAllCells;
         // Filter by size
         if (minNucleiArea > 0){
             allCells = allCells.stream().filter(c -> c.getNucleus().getArea() > minNucleiArea).collect(Collectors.toList());
@@ -389,12 +390,25 @@ public class DeepCell2D {
             // Ensure we have a Mat of the right size. If not, create a padding around to make a mat of the correct size
             var padding = ensureSize(mat, tileWidth, tileHeight, opencv_core.BORDER_REFLECT);
 
+            Mat nucChannel = new Mat();
+            extractChannel(mat, nucChannel, 0);
+
+            String path00 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_dna_input_" + requestPadded.getX()+ "_"+requestPadded.getY() + ".tif";
+            opencv_imgcodecs.imwrite(path00, nucChannel);
+
+            Mat memChannel = new Mat();
+            extractChannel(mat, memChannel, 1);
+            String path11 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_mem_input_" + requestPadded.getX()+ "_"+requestPadded.getY()+ ".tif";
+            opencv_imgcodecs.imwrite(path11, memChannel);
 
             // Convert the mat to a tensor
             var input = TensorFlowTools.convertToTensor(mat);
             // Start a session.
             var sess = model.session();
             List<Tensor> output;
+
+
+
             output = sess.runner()
                     .feed(inputTensorInfo.getName(), input)
                     .fetch(outputTensorInfo.get(0).getName())
@@ -405,16 +419,17 @@ public class DeepCell2D {
 
 
             var formattedOutput = formatOutput(output);
-            String path1 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole" + iter + ".tif";
+            String path1 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole_" + requestPadded.getX()+ "_"+requestPadded.getY() + ".tif";
             opencv_imgcodecs.imwrite(path1, formattedOutput.get("whole-cell").get(0));
 
-            String path2 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc" + iter + ".tif";
+            String path2 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc_" + requestPadded.getX()+ "_"+requestPadded.getY()+ ".tif";
             opencv_imgcodecs.imwrite(path2, formattedOutput.get("nuclear").get(0));
-            iter++;
+
 
             Mat matCell = new Mat();
             Mat matNuclear = new Mat();
             postProcess(formattedOutput, matCell, matNuclear);
+
 
             List<PotentialCell> cells = null;
             try {
@@ -500,6 +515,12 @@ public class DeepCell2D {
         cropImage(cellLabels, croppedCell, padding);
         cropImage(nucleiLabels, croppedNuclei, padding);
 
+//        String path3 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole_lab_crop_" + request.getX()+ "_"+request.getY() + ".tif";
+//        opencv_imgcodecs.imwrite(path3, croppedCell);
+//
+//        String path4 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc_lab_crop_" + request.getX()+ "_"+request.getY()+ ".tif";
+//        opencv_imgcodecs.imwrite(path4, croppedNuclei);
+
         var pathImage = IJTools.convertToImagePlus(server, request);
         ImageProcessor cellProcessor = DeepWatershed.toImageProcessor(croppedCell);
         ImageProcessor nucleiProcessor = DeepWatershed.toImageProcessor(croppedNuclei);
@@ -511,11 +532,15 @@ public class DeepCell2D {
 
         int n_cell = (int) cellProcessor.getStatistics().max;
         int n_nuclei = (int) nucleiProcessor.getStatistics().max;
-        ArrayList<Roi> roisIJ_membrane;
-        ArrayList<Roi> roisIJ_nuclei;
+        List<Roi> roisIJ_membrane;
+        List<Roi> roisIJ_nuclei;
         try {
             roisIJ_membrane = new ArrayList<>(Arrays.asList(RoiLabeling.labelsToConnectedROIs(cellProcessor, n_cell)));
             roisIJ_nuclei = new ArrayList<>(Arrays.asList(RoiLabeling.labelsToConnectedROIs(nucleiProcessor, n_nuclei)));
+
+            roisIJ_membrane = roisIJ_membrane.stream().filter(Objects::nonNull).collect(Collectors.toList());
+            roisIJ_nuclei = roisIJ_nuclei.stream().filter(Objects::nonNull).collect(Collectors.toList());
+
         }
         catch(NullPointerException e){
             System.out.println("Null");
@@ -523,13 +548,14 @@ public class DeepCell2D {
         }
             // The detections
             List<PotentialCell> detections = new ArrayList<>();
-            var cpt = 0;
 
             // Iterate through the membrane rois
-            roisIJ_nuclei.parallelStream().forEach(nucl -> {
+        List<Roi> finalRoisIJ_membrane = roisIJ_membrane;
+        roisIJ_nuclei.parallelStream().forEach(nucl -> {
                 if (nucl == null) {
                     return;
                 }
+
 
 //                roi.setLocation(roi.getXBase() + request.getX() * request.getDownsample(), roi.getYBase() + request.getY() * request.getDownsample());
                 var roi_nuclei = IJTools.convertToROI(
@@ -539,14 +565,14 @@ public class DeepCell2D {
                         request.getDownsample(),
                         request.getPlane());
 
+
                 AtomicReference<ROI> roi_membrane = new AtomicReference<>();
                 AtomicReference<Double> min_diff_X = new AtomicReference<>(Double.MAX_VALUE);
                 AtomicReference<Double> min_diff_Y = new AtomicReference<>(Double.MAX_VALUE);
 
                 ROI finalRoi_nuclei = roi_nuclei;
-                roisIJ_membrane.parallelStream().forEach(roi -> {
+                finalRoisIJ_membrane.parallelStream().forEach(roi -> {
                             if (roi != null) {
-
 //                                nucl.setLocation(nucl.getXBase() + request.getX() * request.getDownsample(), nucl.getYBase() + request.getY() * request.getDownsample());
                                 var membrane = IJTools.convertToROI(
                                         roi,
@@ -582,7 +608,7 @@ public class DeepCell2D {
                             cellExpansion * 2,
                             cellConstrainScale);
                 } else{
-                    roisIJ_membrane.remove(roi_membrane.get());
+                    finalRoisIJ_membrane.remove(roi_membrane.get());
                     geomCell = CellTools.estimateCellBoundary(
                             GeometryTools.roiToGeometry(roi_membrane.get()),
                             cellExpansion,
@@ -595,6 +621,7 @@ public class DeepCell2D {
 
                 roiCell = roiCell.translate(request.getX(), request.getY());
                 roi_nuclei = roi_nuclei.translate(request.getX(), request.getY());
+
                 var locator = mask == null ? null : new SimplePointInAreaLocator(mask);
                 if (locator == null || locator.locate(new Coordinate(roiCell.getCentroidX(), roiCell.getCentroidY())) != Location.EXTERIOR) {
                     var detection = new PotentialCell(roiCell.getGeometry(), roi_nuclei.getGeometry()
