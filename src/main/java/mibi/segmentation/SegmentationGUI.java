@@ -17,9 +17,12 @@ import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.images.ImageData;
 import qupath.lib.images.servers.ImageChannel;
+import qupath.lib.objects.hierarchy.PathObjectHierarchy;
+import qupath.lib.projects.ProjectImageEntry;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,7 +100,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                     }
                 );
         HBox modelHBox = createHBox(modelTextField, modelPathChoose);
-        modelHBox.setMaxWidth(Double.MAX_VALUE); 
+        modelHBox.setMaxWidth(Double.MAX_VALUE);
         gridPane.add(modelPathLabel, 0, i);
         gridPane.add(modelHBox, 1, i);
         i++;
@@ -256,39 +259,17 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         i++;
 
         runButton.setOnAction(e -> {
-            if (builder == null){
-                builder = DeepCell2D.builder();
-            }
-            builder
-                    .modelPath(folder.get())
-                    .nucleiChannel(nucleiComboBox.getValue())
-                    .membraneChannels(membraneList)
-                    .minNucleiArea(Integer.parseInt(minNucAreaTextField.getText()))
-                    .cellExpansion(Integer.parseInt(cellExpansionTextField.getText()))
-                    .cellConstrainScale(Double.parseDouble(cellConstrainScaleTextField.getText()))
-                    .padding(Integer.parseInt(paddingTextField.getText()));
-
-            if (measurementsCheckBox.isSelected()){
-                builder.measureIntensity();
-            }
-            if (shapeMeasurementsCheckBox.isSelected()){
-                builder.measureShape();
-            }
-
-            if (!nThreadsTextField.getText().equals("1")){
-                builder.nThreads(Integer.parseInt(nThreadsTextField.getText()));
-            }
-
-            // Kind of a funky way to do it. Controls the amount of segmentation.
-            // Max subtractive factor is 0.9 and min is 0. Piecewise linear function.
-            if (Precision.equals(segmentationSlider.getValue(), 0)){
-                builder.subtractiveFactor(0);
-            } else if (segmentationSlider.getValue() < 5){
-                builder.subtractiveFactor(0.0002 * segmentationSlider.getValue());
-            } else {
-                builder.subtractiveFactor(0.2 * (0.9 - 0.001) * segmentationSlider.getValue() + 2 * 0.001 - 0.9);
-            }
-
+            buildDeepCell(
+                    folder.get(),
+                    Integer.parseInt(minNucAreaTextField.getText()),
+                    Integer.parseInt(cellExpansionTextField.getText()),
+                    Double.parseDouble(cellConstrainScaleTextField.getText()),
+                    Integer.parseInt(paddingTextField.getText()),
+                    measurementsCheckBox.isSelected(),
+                    shapeMeasurementsCheckBox.isSelected(),
+                    Integer.parseInt(nThreadsTextField.getText()),
+                    segmentationSlider.getValue()
+            );
 
             try {
                 var deepCell = builder.build();
@@ -303,6 +284,58 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
 
         });
 
+
+
+        var runForProjectButton = new Button("Run Segmentation for Current Project");
+        runForProjectButton.setMaxWidth(Double.MAX_VALUE);
+        gridPane.add(runForProjectButton, 0, i, 2, 1);
+        i++;
+
+        runForProjectButton.setOnAction(e -> {
+
+            if (qupath.getProject() == null){
+                Dialogs.showErrorMessage(TITLE, "Could not find a project!");
+                return;
+            }
+
+            if (Dialogs.showConfirmDialog(TITLE, "Are you sure you want to run for the entire project? This may take a very long time")){
+                buildDeepCell(
+                        folder.get(),
+                        Integer.parseInt(minNucAreaTextField.getText()),
+                        Integer.parseInt(cellExpansionTextField.getText()),
+                        Double.parseDouble(cellConstrainScaleTextField.getText()),
+                        Integer.parseInt(paddingTextField.getText()),
+                        measurementsCheckBox.isSelected(),
+                        shapeMeasurementsCheckBox.isSelected(),
+                        Integer.parseInt(nThreadsTextField.getText()),
+                        segmentationSlider.getValue()
+                );
+                var deepCell = builder.build();
+
+
+                for (var entry : qupath.getProject().getImageList()) {
+                    try {
+                        var imageData = entry.readImageData();
+                        var pathObjects = imageData.getHierarchy().getSelectionModel().getSelectedObjects();
+                        deepCell.detectObjects(imageData, pathObjects);
+
+                        entry.saveImageData(imageData);
+                    } catch (IOException ioException) {
+                        Dialogs.showErrorMessage(TITLE, "Could not read "+entry.getImageName());
+                    } catch (RuntimeException runtimeException){
+                        Dialogs.showErrorNotification(TITLE, "Runtime exception for image " + entry.getImageName() + " " + runtimeException);
+                    }
+                }
+                Dialogs.showInfoNotification(TITLE, "Done! Please open and close the current image to see cells!");
+            }
+        });
+
+        var separator5 = new Separator();
+        separator5.setOrientation(Orientation.HORIZONTAL);
+        separator5.setMaxWidth(Double.MAX_VALUE);
+        gridPane.add(separator5, 0, i, 2, 1);
+        i++;
+
         var refreshButton = new Button("Refresh window");
         refreshButton.setOnAction(e -> {
             changed(null, qupath.getImageData(), qupath.getImageData());
@@ -311,6 +344,43 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         gridPane.add(refreshButton, 0, i, 2, 1);
 
         stage.setScene(scene);
+    }
+
+
+    private void buildDeepCell(File folder, int minNucArea, int cellExpansion, double cellConstrainScale, int padding,
+    boolean measurements, boolean shapeMeasurements, int nThreads, double subtractiveFactor){
+        if (builder == null){
+            builder = DeepCell2D.builder();
+        }
+        builder
+                .modelPath(folder)
+                .nucleiChannel(nucleiComboBox.getValue())
+                .membraneChannels(membraneList)
+                .minNucleiArea(minNucArea)
+                .cellExpansion(cellExpansion)
+                .cellConstrainScale(cellConstrainScale)
+                .padding(padding);
+
+        if (measurements){
+            builder.measureIntensity();
+        }
+        if (shapeMeasurements){
+            builder.measureShape();
+        }
+
+        if (nThreads != 1){
+            builder.nThreads(nThreads);
+        }
+
+        // Kind of a funky way to do it. Controls the amount of segmentation.
+        // Max subtractive factor is 0.9 and min is 0. Piecewise linear function.
+        if (Precision.equals(subtractiveFactor, 0)){
+            builder.subtractiveFactor(0);
+        } else if (subtractiveFactor < 5){
+            builder.subtractiveFactor(0.0002 * subtractiveFactor);
+        } else {
+            builder.subtractiveFactor(0.2 * (0.9 - 0.001) * subtractiveFactor + 2 * 0.001 - 0.9);
+        }
     }
 
 
