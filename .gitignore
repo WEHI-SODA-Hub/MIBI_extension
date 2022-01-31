@@ -11,7 +11,7 @@
 .mtj.tmp/
 
 # Package Files #
-MIBIextension/build/libs/MIBI_Extension-1.0-SNAPSHOT-all-Mac.jar
+*.jar
 *.war
 *.nar
 *.ear
