@@ -15,13 +15,11 @@ import java.util.function.Function;
 class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
 
 
-    private Function<PathObject, PathClass> function;
     private Collection<PathClass> pathClasses;
 
 
-    protected AstirCellTypeClassifier(PathObjectFilter filter, Function<PathObject, PathClass> function, Collection<PathClass> pathClasses) {
+    protected AstirCellTypeClassifier(PathObjectFilter filter, Collection<PathClass> pathClasses) {
         super(filter);
-        this.function = function;
         this.pathClasses = pathClasses;
 
     }
@@ -32,7 +30,7 @@ class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
     }
 
     @Override
-    public int classifyObjects(ImageData<T> imageData, Collection<? extends PathObject> collection, boolean b) {
+    public int classifyObjects(ImageData<T> imageData, Collection<? extends PathObject> pathObjects, boolean resetExistingClass) {
         return 0;
     }
 
@@ -40,21 +38,5 @@ class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
     public Map<String, Integer> getMissingFeatures(ImageData<T> imageData, Collection<? extends PathObject> collection) {
         return null;
     }
-
-
-    public static class AstirCellTypeClassifierBuilder{
-
-        private PathObjectFilter filter = PathObjectFilter.DETECTIONS_ALL;
-        private String measurementName;
-
-        public AstirCellTypeClassifierBuilder filter(PathObjectFilter filter){
-            this.filter = filter;
-            return this;
-        }
-
-
-    }
-
-
 
 }

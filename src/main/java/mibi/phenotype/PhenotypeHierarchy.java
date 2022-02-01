@@ -32,6 +32,44 @@ public class PhenotypeHierarchy {
         node.getChildren().forEach(c -> getChildren(c, list));
     }
 
+    public TreeSet<String> getAllMarkers(){
+        TreeSet<String> markers = new TreeSet<>();
+        getMarkers(root, markers);
+        return markers;
+    }
+
+    public void getMarkers(PhenotypeNode node, TreeSet<String> markers){
+        node.getChildren().forEach(c -> {
+            markers.addAll(c.getMarkers());
+            getMarkers(c, markers);
+        });
+    }
+
+    public boolean isEmpty(){
+        return !root.hasChildren();
+    }
+
+    public void saveYAMLFile(){
+
+    }
+
+    public int getNClasses(){
+        int i=0;
+        count(root, i);
+        return i;
+    }
+
+    public void count(PhenotypeNode node, int i){
+        i++;
+        for (var c : node.getChildren()){
+            count(c, i);
+        }
+    }
+
+    public int getNMarkers(){
+        return getAllMarkers().size();
+    }
+
     public static class PhenotypeNode{
         private PhenotypeNode parent;
         private List<PhenotypeNode> children;
@@ -41,6 +79,10 @@ public class PhenotypeHierarchy {
         public PhenotypeNode(){
             this.children = new ArrayList<>();
             this.markers = new ArrayList<>();
+        }
+
+        public boolean hasChildren(){
+            return children.size() > 0;
         }
 
         public PhenotypeNode(String name, PhenotypeNode parent, List<String> newMarkers){
