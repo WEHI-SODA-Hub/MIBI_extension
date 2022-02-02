@@ -5,10 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="27e99924-a056-4bb6-a93d-ecf5ebb098c9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/ClassifyByAstirBuilder.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/PhenotypeTreeTableViewWrapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/celltype/TypeRecognitionNet.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/PhenotypeHierarchy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/PhenotypeHierarchy.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
