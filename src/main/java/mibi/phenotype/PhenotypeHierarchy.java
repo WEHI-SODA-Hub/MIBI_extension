@@ -1,5 +1,9 @@
 package mibi.phenotype;
 
+import javafx.util.Pair;
+import qupath.lib.analysis.features.ObjectMeasurements.Measurements;
+import qupath.lib.analysis.features.ObjectMeasurements.Compartments;
+
 import java.util.*;
 
 /**
@@ -7,9 +11,13 @@ import java.util.*;
  */
 public class PhenotypeHierarchy {
 
+    //TODO: Need check to see if newly added phenotypes have markers from this hashmap
+    private HashMap<String, Pair<Compartments, Measurements>> markerInformation;
+
     private PhenotypeNode root;
 
-    public PhenotypeHierarchy(){
+    public PhenotypeHierarchy(HashMap<String, Pair<Compartments, Measurements>> markerInformation){
+        this.markerInformation = markerInformation;
         root = new PhenotypeNode();
     }
 
@@ -21,13 +29,13 @@ public class PhenotypeHierarchy {
        this.root = node;
     }
 
-    public List<PhenotypeNode> getAllChildren(){
-        List<PhenotypeNode> list = new ArrayList<>();
+    public TreeSet<PhenotypeNode> getAllChildren(){
+        TreeSet<PhenotypeNode> list = new TreeSet<>();
         getChildren(root, list);
         return list;
     }
 
-    public void getChildren(PhenotypeNode node, List<PhenotypeNode> list){
+    private void getChildren(PhenotypeNode node, TreeSet<PhenotypeNode> list){
         list.addAll(node.getChildren());
         node.getChildren().forEach(c -> getChildren(c, list));
     }
@@ -38,11 +46,45 @@ public class PhenotypeHierarchy {
         return markers;
     }
 
-    public void getMarkers(PhenotypeNode node, TreeSet<String> markers){
+    private void getMarkers(PhenotypeNode node, TreeSet<String> markers){
         node.getChildren().forEach(c -> {
             markers.addAll(c.getMarkers());
             getMarkers(c, markers);
         });
+    }
+
+    public TreeSet<String> getFullMeasurements(){
+        TreeSet<String> fullMeasurements = new TreeSet<>();
+        getAllMarkers().forEach(t -> {
+            Pair<Compartments, Measurements> pair = markerInformation.get(t);
+            var compartment = pair.getKey();
+            var measurement = pair.getValue();
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.append(t);
+            sb.append(": ");
+
+            if (compartment == Compartments.CELL){
+                sb.append("Cell");
+                sb.append(": ");
+            } else if (compartment == Compartments.CYTOPLASM){
+                sb.append("Cytoplasm");
+                sb.append(": ");
+            } else if (compartment == Compartments.MEMBRANE) {
+                sb.append("Membrane");
+                sb.append(": ");
+            } else if (compartment == Compartments.NUCLEUS){
+                sb.append("Nucleus");
+                sb.append(": ");
+            } else {
+                throw new RuntimeException("No compartment found for " + t);
+            }
+            sb.append(measurement.name());
+            fullMeasurements.add(sb.toString());
+        });
+
+        return fullMeasurements;
     }
 
     public boolean isEmpty(){
@@ -71,7 +113,7 @@ public class PhenotypeHierarchy {
         return getAllMarkers().size();
     }
 
-    public static class PhenotypeNode{
+    public static class PhenotypeNode implements Comparable<PhenotypeNode>{
         private PhenotypeNode parent;
         private List<PhenotypeNode> children;
         private List<String> markers;
@@ -98,6 +140,8 @@ public class PhenotypeHierarchy {
         public PhenotypeNode getParent() {
             return parent;
         }
+
+
 
         public void setParent(PhenotypeNode parent) {
             this.parent = parent;
@@ -138,6 +182,11 @@ public class PhenotypeHierarchy {
 
         public String getFullName(){
             return parent == null ?  getName() : parent.getFullName() + ": " + getName();
+        }
+
+        @Override
+        public int compareTo(PhenotypeNode o) {
+            return this.getFullName().compareTo(o.getFullName());
         }
     }
 }

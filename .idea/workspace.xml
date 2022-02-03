@@ -5,9 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="27e99924-a056-4bb6-a93d-ecf5ebb098c9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/celltype/TypeRecognitionNet.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/data/SCDataset.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/ClassifyByAstirBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/ClassifyByAstirBuilder.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/PhenotypeHierarchy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/PhenotypeHierarchy.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/celltype/TypeRecognitionNet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/celltype/TypeRecognitionNet.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +96,7 @@
     <property name="project.structure.last.edited" value="Project" />
     <property name="project.structure.proportion" value="0.15" />
     <property name="project.structure.side.proportion" value="0.26551723" />
-    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.project.gradle" />
+    <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
   </component>
   <component name="RunManager" selected="Application.QuPathTestRun">
     <configuration name="QuPathTestRun (1)" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">

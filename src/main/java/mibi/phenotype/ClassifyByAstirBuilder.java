@@ -68,6 +68,6 @@ public class ClassifyByAstirBuilder<T> {
             throw new IllegalArgumentException("Hierarchy is empty!");
 
 
-        return new AstirCellTypeClassifier<>();
+        return new AstirCellTypeClassifier<>(filter, phenotypeHierarchy);
     }
 }

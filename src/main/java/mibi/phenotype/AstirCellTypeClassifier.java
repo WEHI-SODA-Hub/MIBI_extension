@@ -1,5 +1,7 @@
 package mibi.phenotype;
 
+import mibi.phenotype.celltype.TypeRecognitionNet;
+import org.tensorflow.Tensor;
 import qupath.lib.analysis.features.ObjectMeasurements;
 import qupath.lib.classifiers.object.AbstractObjectClassifier;
 import qupath.lib.images.ImageData;
@@ -12,16 +14,27 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
+public class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
 
 
-    private Collection<PathClass> pathClasses;
+    private PhenotypeHierarchy phenotypeHierarchy;
+    private int G;
+    private int C;
 
+    private Object dType;
 
-    protected AstirCellTypeClassifier(PathObjectFilter filter, Collection<PathClass> pathClasses) {
+    private TypeRecognitionNet recognitionNet;
+
+    public AstirCellTypeClassifier(PathObjectFilter filter, PhenotypeHierarchy phenotypeHierarchy) {
         super(filter);
-        this.pathClasses = pathClasses;
+        this.phenotypeHierarchy = phenotypeHierarchy;
 
+        this.C = phenotypeHierarchy.getNClasses();
+        this.G = phenotypeHierarchy.getNMarkers();
+
+        recognitionNet = new TypeRecognitionNet(C, G);
+
+        Tensor
     }
 
     @Override
