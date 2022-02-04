@@ -34,7 +34,7 @@ public class AstirCellTypeClassifier<T> extends AbstractObjectClassifier<T>{
 
         recognitionNet = new TypeRecognitionNet(C, G);
 
-        Tensor
+//        Tensor
     }
 
     @Override

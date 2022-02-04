@@ -1,3 +1,5 @@
+mibi/phenotype/PheontypeTest.java
+ mibi.phenotype.PheontypeTest
 mibi/stitch/TestGridStitchMacroOptions.java
  mibi.stitch.TestGridStitchMacroOptions
 mibi/QuPathTestRun.java

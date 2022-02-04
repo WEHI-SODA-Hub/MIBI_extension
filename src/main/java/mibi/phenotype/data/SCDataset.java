@@ -2,7 +2,9 @@ package mibi.phenotype.data;
 
 import javafx.util.Pair;
 import mibi.phenotype.PhenotypeHierarchy;
+import org.apache.commons.math3.analysis.function.Asin;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.analysis.function.Asinh;
 import org.tensorflow.Tensor;
 import org.tensorflow.TensorFlow;
 import qupath.lib.objects.PathObject;
@@ -27,6 +29,10 @@ public class SCDataset {
 
     private Tensor markerMat;
 
+    private final static double PERCENTILE = 0.95;
+
+    private final static double COFACTOR = 5;
+
     // TODO: default to cpu. not sure how to do gpu
     private Object device;
 
@@ -48,14 +54,8 @@ public class SCDataset {
         if (cells.size() < 1){
 
         }
+        DescriptiveStatistics[] normalisedData = normaliseData(cells);
 
-        Pair<String, DescriptiveStatistics>[] descriptiveStats = new Pair[fullMarkerMeasurements.size()];
-        for (String measurement : fullMarkerMeasurements){
-
-        }
-        for (var cell : cells){
-             cell.getMeasurementList().getMeasurementValue()
-        }
     }
 
     public Tensor constructMarkerMat(){
@@ -66,5 +66,37 @@ public class SCDataset {
         return null;
     }
 
-    private List<String> createFullMeasurements(Collection<String> markers, )
+//    private List<String> createFullMeasurements(Collection<String> markers, )
+
+    /**
+     * Winsorise and arcsinh
+     * @param cells
+     */
+    public DescriptiveStatistics[] normaliseData(Collection<PathObject> cells){
+        DescriptiveStatistics[] descriptiveStats = new DescriptiveStatistics[fullMarkerMeasurements.size()];
+        Asinh asinh = new Asinh();
+        int col = 0;
+        for (String measurement : fullMarkerMeasurements){
+            descriptiveStats[col] = new DescriptiveStatistics(cells.size());
+
+            for (var cell : cells) {
+                descriptiveStats[col].addValue(asinh.value(cell.getMeasurementList().getMeasurementValue(measurement) / COFACTOR));
+            }
+
+            double upperLimit = descriptiveStats[col].getPercentile(PERCENTILE);
+            double lowerLimit = descriptiveStats[col].getPercentile(1 - PERCENTILE);
+            double[] values = descriptiveStats[col].getValues();
+
+            for (int i=0; i < values.length; i++){
+                if (values[i] < lowerLimit){
+                    values[i] = lowerLimit;
+                } else if (values[i] > upperLimit){
+                    values[i] = upperLimit;
+                }
+            }
+            descriptiveStats[col] = new DescriptiveStatistics(values);
+            col++;
+        }
+        return descriptiveStats;
+    }
 }
