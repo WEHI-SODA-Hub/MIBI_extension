@@ -24,6 +24,7 @@ import org.tensorflow.proto.framework.TensorInfo;
 import qupath.ext.tensorflow.TensorFlowTools;
 import qupath.imagej.processing.RoiLabeling;
 import qupath.imagej.tools.IJTools;
+import qupath.lib.analysis.features.AdditionalObjectMeasurements;
 import qupath.lib.analysis.features.ObjectMeasurements;
 import qupath.lib.analysis.features.ObjectMeasurements.*;
 import qupath.lib.common.GeneralTools;
@@ -32,6 +33,7 @@ import qupath.lib.images.ImageData;
 import qupath.lib.images.servers.*;
 import qupath.lib.images.servers.ColorTransforms.ColorTransform;
 import qupath.lib.objects.CellTools;
+import qupath.lib.objects.PathCellObject;
 import qupath.lib.objects.PathObject;
 import qupath.lib.objects.PathObjects;
 import qupath.lib.regions.ImagePlane;
@@ -78,6 +80,8 @@ public class DeepCell2D {
     private boolean ignoreCellOverlaps;
     private boolean measureShape;
     private int nThreads = -1;
+
+    private List<Double> percentiles;
 
     // TODO: Maybe implement in the future.
     private boolean constrainToParent = true;
@@ -323,6 +327,7 @@ public class DeepCell2D {
             cells.parallelStream().forEach(cell -> {
                 try {
                     ObjectMeasurements.addIntensityMeasurements(server2, cell, downsample, measurements, compartments);
+                    AdditionalObjectMeasurements.addPercentileIntensityMeasurements(server2, (PathCellObject) cell, downsample, percentiles, compartments);
                 } catch (IOException e) {
                     log(e.getLocalizedMessage(), e);
                 }
@@ -833,6 +838,7 @@ public class DeepCell2D {
         private boolean ignoreCellOverlaps = false;
         private double pixelSize = Double.NaN;
 
+        private List<Double> percentiles = new ArrayList<>();
 
         public Builder modelPath(File modelPath){
             this.modelPath = modelPath;
@@ -870,6 +876,11 @@ public class DeepCell2D {
 
         public Builder nucleiChannel(String channel){
             this.nucleiChannel = ColorTransforms.createChannelExtractor(channel);
+            return this;
+        }
+
+        public Builder percentile(double percentile){
+            this.percentiles.add(percentile);
             return this;
         }
 
@@ -1147,6 +1158,8 @@ public class DeepCell2D {
             deepCell2D.doLog = doLog;
             deepCell2D.nThreads = nThreads;
             deepCell2D.constrainToParent = constrainToParent;
+
+            deepCell2D.percentiles = percentiles;
 
             if (subtractiveFactor > 1 || subtractiveFactor < 0){
                 logger.warn("Invalid subtractive factor. Using default value");

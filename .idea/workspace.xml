@@ -5,13 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="27e99924-a056-4bb6-a93d-ecf5ebb098c9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/test/java/mibi/phenotype/PheontypeTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/6.7/fileChanges/last-build.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/6.7/fileHashes/fileHashes.lock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/6.7/gc.properties" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/qupath/lib/analysis/features/AdditionalObjectMeasurements.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/AstirCellTypeClassifier.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/data/SCDataset.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/data/SCDataset.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/segmentation/DeepCell2D.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/segmentation/DeepCell2D.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/segmentation/SegmentationGUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/segmentation/SegmentationGUI.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
