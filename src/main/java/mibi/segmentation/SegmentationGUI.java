@@ -381,10 +381,11 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         } else {
             builder.subtractiveFactor(0.2 * (0.9 - 0.001) * subtractiveFactor + 2 * 0.001 - 0.9);
         }
-        builder.percentile(0.9);
-        builder.percentile(0.8);
-        builder.percentile(0.7);
-        builder.percentile(0.95);
+        builder.percentile(95);
+        builder.percentile(90);
+        builder.percentile(80);
+        builder.percentile(70);
+
     }
 
 
