@@ -62,22 +62,22 @@ public class QuantileGUI implements Runnable{
         var quantileRemoveButton = new Button("Remove");
 
         gridPane.add(quantileLabel, 0, 0);
-        gridPane.add(quantileTextField, 0, 1);
-        gridPane.add(quantileInsertButton, 0, 2);
-        gridPane.add(quantileRemoveButton, 0, 3);
+        gridPane.add(quantileTextField, 1, 0);
+        gridPane.add(quantileInsertButton, 2, 0);
+        gridPane.add(quantileRemoveButton, 3, 0);
 
 
 
         var quantileDisplayTextField = new TextField();
 
-        gridPane.add(quantileDisplayTextField, 1, 0, 1, 4);
+        gridPane.add(quantileDisplayTextField, 0, 1, 4, 1);
 
         quantileInsertButton.setOnAction((event) -> {
             var selected = Double.parseDouble(quantileTextField.getText());
             if (!quantiles.contains(selected)){
                 quantiles.add(selected);
                 String text = quantiles.toString();
-                quantileTextField.setText(text.substring(1, text.length() - 1));
+                quantileDisplayTextField.setText(text.substring(1, text.length() - 1));
             }
         });
 
@@ -86,12 +86,12 @@ public class QuantileGUI implements Runnable{
             if (quantiles.contains(selected)){
                 quantiles.remove(selected);
                 String text = quantiles.toString();
-                quantileTextField.setText(text.substring(1, text.length()-1));
+                quantileDisplayTextField.setText(text.substring(1, text.length()-1));
             };
         });
 
         var quantileRun = new Button("Run For Project");
-        gridPane.add(quantileRun, 2, 0, 1, 4);
+        gridPane.add(quantileRun, 0, 1, 4, 1);
         quantileRun.setOnAction((event) -> {
             if (qupath.getProject() == null){
                 Dialogs.showErrorMessage(TITLE, "Could not find a project!");

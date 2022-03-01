@@ -26,7 +26,7 @@ public class MIBIExtension implements QuPathExtension {
 
         Action quantileWindow = ActionTools.createAction(new QuantileGUI(qupath), "Quantile");
         MenuTools.addMenuItems(
-                qupath.getMenu("Extension>MIBI Extension", true),
+                qupath.getMenu("Extensions>MIBI Extension", true),
                 quantileWindow
         );
     }
