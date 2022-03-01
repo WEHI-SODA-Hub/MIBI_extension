@@ -1,5 +1,6 @@
 package mibi;
 
+import mibi.phenotype.QuantileGUI;
 import mibi.segmentation.SegmentationGUI;
 import mibi.stitch.GridStitchGUI;
 
@@ -22,6 +23,12 @@ public class MIBIExtension implements QuPathExtension {
         MenuTools.addMenuItems(
                 qupath.getMenu("Extensions>MIBI Extension", true),
                 segmentationWindow);
+
+        Action quantileWindow = ActionTools.createAction(new QuantileGUI(qupath), "Quantile");
+        MenuTools.addMenuItems(
+                qupath.getMenu("Extension>MIBI Extension", true),
+                quantileWindow
+        );
     }
 
     @Override

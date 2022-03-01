@@ -11,6 +11,8 @@ mibi/phenotype/PhenotypeHierarchy.java
  mibi.phenotype.PhenotypeHierarchy$PhenotypeNode
 mibi/phenotype/PhenotypeGUI.java
  mibi.phenotype.PhenotypeGUI
+qupath/lib/analysis/features/AdditionalObjectMeasurements.java
+ qupath.lib.analysis.features.AdditionalObjectMeasurements
 mibi/phenotype/data/SCDataset.java
  mibi.phenotype.data.SCDataset
 mibi/segmentation/TensorFlowModelLoadTest.java
