@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="27e99924-a056-4bb6-a93d-ecf5ebb098c9" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mibi/MIBIExtension.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/MIBIExtension.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mibi/phenotype/QuantileGUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mibi/phenotype/QuantileGUI.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

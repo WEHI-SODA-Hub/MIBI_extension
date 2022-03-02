@@ -91,7 +91,7 @@ public class QuantileGUI implements Runnable{
         });
 
         var quantileRun = new Button("Run For Project");
-        gridPane.add(quantileRun, 0, 1, 4, 1);
+        gridPane.add(quantileRun, 0, 2, 4, 1);
         quantileRun.setOnAction((event) -> {
             if (qupath.getProject() == null){
                 Dialogs.showErrorMessage(TITLE, "Could not find a project!");
