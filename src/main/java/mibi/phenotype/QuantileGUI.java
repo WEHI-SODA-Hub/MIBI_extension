@@ -57,7 +57,7 @@ public class QuantileGUI implements Runnable{
         GridPane gridPane = createGridPane();
 
         var quantileLabel = createLabel("Quantile");
-        var quantileTextField = createNaturalNumberTextField();
+        var quantileTextField = createPositiveRealTextField();
         var quantileInsertButton = new Button("Insert");
         var quantileRemoveButton = new Button("Remove");
 
