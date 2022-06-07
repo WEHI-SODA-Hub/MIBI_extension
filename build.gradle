@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'org.bytedeco.gradle-javacpp-platform' version '1.5.7-SNAPSHOT'
+    id 'org.bytedeco.gradle-javacpp-platform' version '1.5.7'
     id 'com.github.johnrengelman.shadow' version '7.0.0'
 //    id 'org.bytedeco.gradle-javacpp-build' version '1.5.6'
 }
@@ -27,12 +27,12 @@ dependencies {
 //    implementation "com.github.qupath:qupath-extension-tensorflow:0.3.0"
 
     shadow files("/Users/yokote.k/QuPath/v0.3/oldExtensions/qupath-extension-tensorflow-0.3.0.jar")
-    implementation 'org.bytedeco:javacv-platform:1.5.7-SNAPSHOT'
+    implementation 'org.bytedeco:javacv-platform:1.5.7'
 //    shadow 'org.bytedeco:javacpp:1.5.5'
-    implementation 'org.bytedeco:javacpp-presets-platform:1.5.5'
-    shadow 'org.tensorflow:tensorflow-core-platform:0.4.0'
+    implementation 'org.bytedeco:javacpp-presets-platform:1.5.7'
+    shadow 'org.tensorflow:tensorflow-core-platform:0.4.1'
 
-    implementation fileTree(dir: '/Users/yokote.k/Desktop/QuPath-0.3.0.app/Contents/app/', include: '*.jar')
+    implementation fileTree(dir: '/Users/yokote.k/Desktop/Stuff/QuPath-0.3.0.app/Contents/app/', include: '*.jar')
     String javaFxVersion = '11'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'win'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'mac'

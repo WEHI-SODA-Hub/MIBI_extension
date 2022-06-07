@@ -1,16 +1,18 @@
 package qupath.opencv.ops;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.MatVector;
 import org.bytedeco.opencv.opencv_core.Scalar;
+import org.bytedeco.opencv.opencv_core.Size;
 import org.bytedeco.opencv.opencv_imgproc.CLAHE;
 import qupath.lib.gui.dialogs.Dialogs;
+import qupath.opencv.tools.OpenCVTools;
 
-import static org.bytedeco.opencv.global.opencv_core.CV_16UC1;
-import static org.bytedeco.opencv.global.opencv_core.CV_32F;
+import static org.bytedeco.opencv.global.opencv_core.*;
 
 /**
  * Applies the preprocessing steps for Mesmer.
@@ -18,9 +20,6 @@ import static org.bytedeco.opencv.global.opencv_core.CV_32F;
  * This may have affects on performance later on.
  */
 public class DeepCellPreprocessOp implements ImageOp {
-
-    // Might need to change perhaps
-    private static final double PRECISION = 0.01;
 
     public static DeepCellPreprocessOp preprocess(){
         return new DeepCellPreprocessOp();
@@ -44,6 +43,29 @@ public class DeepCellPreprocessOp implements ImageOp {
             // extract channel
             var mat = matvec.get(c);
 
+
+            var ip = OpenCVTools.matToImageProcessor(mat);
+
+            int width = ip.getWidth();
+            int height = ip.getHeight();
+
+            DescriptiveStatistics ds = new DescriptiveStatistics();
+
+            for (int i=0; i < width; i++){
+                for (int j=0; j < height; j++){
+                    var val = ip.getf(i,j);
+                    if (val > 0 )
+                        ds.addValue(ip.getf(i,j));
+                }
+            }
+
+//            var percentile99dot9 = ds.getPercentile(99.9);
+//            // The 100 is ignored. Does not matter for THRESH_TRUNC
+//            opencv_imgproc.threshold(mat, mat, percentile99dot9, 255, opencv_imgproc.THRESH_TRUNC);
+
+//            opencv_core.minMaxLoc(mat, min, max, null, null, null);
+//            mat.convertTo(mat, mat.type(), 1 / (max.get()), 0);
+
             // convert for clahe compatibility
             mat.convertTo(mat, CV_16UC1);
             clahe.apply(mat, mat);
@@ -52,16 +74,11 @@ public class DeepCellPreprocessOp implements ImageOp {
             mat.convertTo(mat, CV_32F);
 
             opencv_core.minMaxLoc(mat, min, max, null, null, null);
+            mat.convertTo(mat, mat.type(), 1 / (max.get()), 0);
 
-            // If the image is more or less just a constant value
+//            opencv_imgproc.GaussianBlur(mat, mat, new Size(0,0), 1, 1, BORDER_REFLECT);
 
-            if (Math.abs(min.get() - max.get()) < PRECISION) {
-                var zeroMat = new Mat(mat.rows(), mat.cols(), mat.type(), new Scalar(0));
-                zeroMat.copyTo(mat);
-            }
-            else
-                mat.convertTo(mat, mat.type(), 1 / (max.get()-min.get()), -1 * min.get() / (max.get()-min.get()));
-
+            matvec.put(c, mat);
         }
         opencv_core.merge(matvec, input);
         return input;

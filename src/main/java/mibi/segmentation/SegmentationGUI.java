@@ -199,6 +199,13 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
         gridPane.add(cellConstrainScaleTextField, 1,i);
         i++;
 
+        var cellConstrainToParentLabel = createLabel("Remove cells touching border");
+        var cellConstrainToParentCheckBox = new CheckBox();
+        cellConstrainToParentCheckBox.setSelected(true);
+        gridPane.add(cellConstrainToParentLabel, 0,i);
+        gridPane.add(cellConstrainToParentCheckBox, 1,i);
+        i++;
+
         var paddingLabel = createLabel("Padding around tiles");
         var paddingTextField = createNaturalNumberTextField(scene, 64);
         gridPane.add(paddingLabel,0,i);
@@ -268,12 +275,15 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                     measurementsCheckBox.isSelected(),
                     shapeMeasurementsCheckBox.isSelected(),
                     Integer.parseInt(nThreadsTextField.getText()),
-                    segmentationSlider.getValue()
+                    segmentationSlider.getValue(),
+                    cellConstrainToParentCheckBox.isSelected()
             );
 
             try {
-                var deepCell = builder.build();
                 var imageData = qupath.getImageData();
+                builder.imageData(imageData);
+                var deepCell = builder.build();
+
                 var pathObjects = qupath.getImageData().getHierarchy().getSelectionModel().getSelectedObjects();
                 deepCell.detectObjects(imageData, pathObjects);
                 Dialogs.showInfoNotification(TITLE, "Done!");
@@ -308,14 +318,17 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                         measurementsCheckBox.isSelected(),
                         shapeMeasurementsCheckBox.isSelected(),
                         Integer.parseInt(nThreadsTextField.getText()),
-                        segmentationSlider.getValue()
+                        segmentationSlider.getValue(),
+                        cellConstrainToParentCheckBox.isSelected()
                 );
-                var deepCell = builder.build();
+
 
 
                 for (var entry : qupath.getProject().getImageList()) {
                     try {
                         var imageData = entry.readImageData();
+                        builder.imageData(imageData);
+                        var deepCell = builder.build();
                         var pathObjects = imageData.getHierarchy().getSelectionModel().getSelectedObjects();
                         deepCell.detectObjects(imageData, pathObjects);
 
@@ -348,7 +361,7 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
 
 
     private void buildDeepCell(File folder, int minNucArea, int cellExpansion, double cellConstrainScale, int padding,
-    boolean measurements, boolean shapeMeasurements, int nThreads, double subtractiveFactor){
+    boolean measurements, boolean shapeMeasurements, int nThreads, double subtractiveFactor, boolean constrainToParent){
         if (builder == null){
             builder = DeepCell2D.builder();
         }
@@ -359,7 +372,9 @@ public class SegmentationGUI implements Runnable, ChangeListener<ImageData<Buffe
                 .minNucleiArea(minNucArea)
                 .cellExpansion(cellExpansion)
                 .cellConstrainScale(cellConstrainScale)
-                .padding(padding);
+                .padding(padding)
+                .constrainToParent(constrainToParent);
+
 
         if (measurements){
             builder.measureIntensity();

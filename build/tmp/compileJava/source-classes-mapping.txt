@@ -2,8 +2,8 @@ mibi/segmentation/DeepCellToolbox/DeepWatershed.java
  mibi.segmentation.DeepCellToolbox.DeepWatershed
  mibi.segmentation.DeepCellToolbox.DeepWatershed$Builder
  mibi.segmentation.DeepCellToolbox.DeepWatershed$MaximaAlgorithms
-mibi/MIBIExtension.java
- mibi.MIBIExtension
+mibi/segmentation/TensorFlowModelLoadTest.java
+ mibi.segmentation.TensorFlowModelLoadTest
 mibi/segmentation/SegmentationGUI.java
  mibi.segmentation.SegmentationGUI
 mibi/phenotype/PhenotypeHierarchy.java
@@ -15,16 +15,20 @@ qupath/lib/analysis/features/AdditionalObjectMeasurements.java
  qupath.lib.analysis.features.AdditionalObjectMeasurements
 mibi/phenotype/data/SCDataset.java
  mibi.phenotype.data.SCDataset
-mibi/segmentation/TensorFlowModelLoadTest.java
- mibi.segmentation.TensorFlowModelLoadTest
+mibi/phenotype/ClassifyByAstirBuilder.java
+ mibi.phenotype.ClassifyByAstirBuilder
 mibi/segmentation/CV_DTYPE.java
  mibi.segmentation.CV_DTYPE
  mibi.segmentation.CV_DTYPE$CV_FLOAT
  mibi.segmentation.CV_DTYPE$CV_SHORT
-mibi/segmentation/DeepCell2D.java
- mibi.segmentation.DeepCell2D
- mibi.segmentation.DeepCell2D$Builder
- mibi.segmentation.DeepCell2D$PotentialCell
+mibi/phenotype/QuantileGUI.java
+ mibi.phenotype.QuantileGUI
+mibi/stitch/GridStitchMacroOptions.java
+ mibi.stitch.GridStitchMacroOptions
+ mibi.stitch.GridStitchMacroOptions$ComputationParameter
+ mibi.stitch.GridStitchMacroOptions$FusionMethod
+ mibi.stitch.GridStitchMacroOptions$ImageOutput
+ mibi.stitch.GridStitchMacroOptions$Type
 mibi/stitch/GridStitchGUI.java
  mibi.stitch.GridStitchGUI
  mibi.stitch.GridStitchGUI$1
@@ -38,16 +42,14 @@ mibi/phenotype/celltype/TypeRecognitionNet.java
  mibi.phenotype.celltype.TypeRecognitionNet
 mibi/phenotype/PhenotypeTreeTableViewWrapper.java
  mibi.phenotype.PhenotypeTreeTableViewWrapper
+mibi/MIBIExtension.java
+ mibi.MIBIExtension
+mibi/segmentation/DeepCell2D.java
+ mibi.segmentation.DeepCell2D
+ mibi.segmentation.DeepCell2D$Builder
+ mibi.segmentation.DeepCell2D$PotentialCell
 qupath/opencv/ops/DeepCellImageOps.java
  qupath.opencv.ops.DeepCellImageOps
  qupath.opencv.ops.DeepCellImageOps$DeepCellChannelImageDataOp
-mibi/phenotype/ClassifyByAstirBuilder.java
- mibi.phenotype.ClassifyByAstirBuilder
 qupath/opencv/ops/DeepCellPreprocessOp.java
  qupath.opencv.ops.DeepCellPreprocessOp
-mibi/stitch/GridStitchMacroOptions.java
- mibi.stitch.GridStitchMacroOptions
- mibi.stitch.GridStitchMacroOptions$ComputationParameter
- mibi.stitch.GridStitchMacroOptions$FusionMethod
- mibi.stitch.GridStitchMacroOptions$ImageOutput
- mibi.stitch.GridStitchMacroOptions$Type

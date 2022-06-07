@@ -12,7 +12,10 @@ import org.bytedeco.opencv.opencv_core.Size;
 import org.locationtech.jts.algorithm.Centroid;
 import org.locationtech.jts.algorithm.locate.SimplePointInAreaLocator;
 import org.locationtech.jts.geom.*;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
 import org.locationtech.jts.index.strtree.STRtree;
+import org.locationtech.jts.simplify.VWSimplifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +48,12 @@ import qupath.lib.roi.interfaces.ROI;
 import qupath.opencv.ops.*;
 import qupath.opencv.tools.OpenCVTools;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -63,6 +68,7 @@ import static org.bytedeco.opencv.global.opencv_core.extractChannel;
  * StarDist2D.java using the tensorflow extension.
  */
 public class DeepCell2D {
+    private double simplifyDistance = 1.4;
     private final static Logger logger = LoggerFactory.getLogger(DeepCell2D.class);
     private static final String signature = "serving_default";
 
@@ -283,7 +289,7 @@ public class DeepCell2D {
             }
             }
         );
-        allCells = filterCells(finalAllCells);
+        allCells = filterCells(finalAllCells, mask);
 //        allCells = finalAllCells;
         // Filter by size
         if (minNucleiArea > 0){
@@ -300,9 +306,8 @@ public class DeepCell2D {
 
 
 
-
         // There should be no cell overlaps TODO: add in cell expansion
-
+        cells = CellTools.constrainCellOverlaps(cells);
         // Add shape measurements, if needed
         if (measureShape)
             cells.parallelStream().forEach(c -> ObjectMeasurements.addShapeMeasurements(c, cal));
@@ -337,7 +342,7 @@ public class DeepCell2D {
 
         log("Detected {} cells", cells.size());
 
-        return CellTools.constrainCellOverlaps(cells);
+        return cells;
     }
 
 
@@ -425,10 +430,10 @@ public class DeepCell2D {
 
             var formattedOutput = formatOutput(output);
             String path1 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole_" + requestPadded.getX()+ "_"+requestPadded.getY() + ".tif";
-            opencv_imgcodecs.imwrite(path1, formattedOutput.get("whole-cell").get(0));
+            opencv_imgcodecs.imwrite(path1, formattedOutput.get("whole-cell").get(1));
 
             String path2 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc_" + requestPadded.getX()+ "_"+requestPadded.getY()+ ".tif";
-            opencv_imgcodecs.imwrite(path2, formattedOutput.get("nuclear").get(0));
+            opencv_imgcodecs.imwrite(path2, formattedOutput.get("nuclear").get(1));
 
 
             Mat matCell = new Mat();
@@ -654,7 +659,7 @@ public class DeepCell2D {
             }
 
 
-            return filterCells(detections);
+            return filterCells(detections, null);
 //            return detections;
     }
 
@@ -667,7 +672,7 @@ public class DeepCell2D {
         OpenCVTools.crop(src, x1, y1, src.cols()-x2-x1, src.rows()-y2-y1).copyTo(dst);
     }
 
-    private List<PotentialCell> filterCells(List<PotentialCell> potentialCells){
+    private List<PotentialCell> filterCells(List<PotentialCell> potentialCells, Geometry mask){
         // Sort in descending order comparing the total area of the cell
         potentialCells.sort(Comparator.comparingDouble(PotentialCell::getFullArea).reversed());
 
@@ -727,10 +732,36 @@ public class DeepCell2D {
             logger.warn("Skipped {} nucleus detection(s) due to error in resolving overlaps ({}% of all skipped)",
                     skipErrorCount, GeneralTools.formatNumber(skipErrorCount*100.0/skipCount, 1));
         }
+
+        var removeCells = new ArrayList<PotentialCell>();
+        if (constrainToParent && (mask != null)) {
+            var lines = LinearComponentExtracter.getLines(mask);
+            for (var i = lines.iterator(); i.hasNext(); ) {
+                LineString line = (LineString) i.next();
+                removeCells.addAll(
+                        cells.parallelStream()
+                                .filter(d -> line.isWithinDistance(d.getMembrane(), 0)).toList()
+                );
+            }
+        }
+        removeCells.forEach(cells::remove);
+
+        cells.forEach(e -> {
+            e.setMembrane(GeometryTools.fillHoles(e.getMembrane()));
+            e.setNucleus(GeometryTools.fillHoles(e.getNucleus()));
+        });
         return new ArrayList<>(cells);
     }
 
-
+    private Geometry simplify(Geometry geom) {
+        if (simplifyDistance <= 0)
+            return geom;
+        try {
+            return VWSimplifier.simplify(geom, simplifyDistance);
+        } catch (Exception e) {
+            return geom;
+        }
+    }
 
     // Ensures that the tile is the correct size. If not if will add a padding to make it
     // the correct size.
@@ -810,7 +841,7 @@ public class DeepCell2D {
     }
 
     public static class Builder{
-
+        private double simplifyDistance = 1.4;
         private File modelPath;
 
         private List<ImageOp> ops = new ArrayList<>();
@@ -834,9 +865,11 @@ public class DeepCell2D {
 
         //TODO: Not urgent. Do when you have time
         private List<Compartments> compartments = Arrays.asList(Compartments.values());
-        private boolean constrainToParent = false;
+        private boolean constrainToParent = true;
         private boolean ignoreCellOverlaps = false;
         private double pixelSize = Double.NaN;
+
+        private ImageData<BufferedImage> imageData = null;
 
         private List<Double> percentiles = new ArrayList<>();
 
@@ -1069,6 +1102,12 @@ public class DeepCell2D {
         }
 
 
+
+        public Builder imageData(ImageData<BufferedImage> imageData){
+            this.imageData = imageData;
+            return this;
+        }
+
         //TODO: Add the percentile threshold included
         // https://github.com/vanvalenlab/deepcell-toolbox/blob/88fa8e5afd68d6d3b87af703bc79a4d099e8ba17/deepcell_toolbox/processing.py
         // for better results using mesmer
@@ -1079,7 +1118,7 @@ public class DeepCell2D {
          * Build the instance of the DeepCell2D.
          * @return
          */
-        public DeepCell2D build(){
+        public DeepCell2D build() {
 
             var deepCell2D = new DeepCell2D();
             var mergedOps = new ArrayList<>(ops);
@@ -1131,7 +1170,7 @@ public class DeepCell2D {
 
 
             mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
-            mergedOps.add(DeepCellPreprocessOp.preprocess());
+//            mergedOps.add(DeepCellPreprocessOp.preprocess());
             // ImageOps.buildImageDataOp(channels) is the operation to extract the channels
             // Also includes any other image operations the user has specified
 
@@ -1143,8 +1182,12 @@ public class DeepCell2D {
                 throw new RuntimeException("Please select a nuclei channel!");
             }
 
-            deepCell2D.op = DeepCellImageOps.buildImageDataOps(nucleiChannel, membraneChannels)
-                    .appendOps(mergedOps.toArray(ImageOp[]::new));
+            try{
+                deepCell2D.op = DeepCellImageOps.buildImageDataOps(imageData, nucleiChannel, membraneChannels)
+                        .appendOps(mergedOps.toArray(ImageOp[]::new));
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
 
             deepCell2D.dnn = dnn;
             deepCell2D.pixelSize = pixelSize;
