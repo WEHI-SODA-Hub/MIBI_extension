@@ -2,10 +2,10 @@ mibi/segmentation/DeepCellToolbox/DeepWatershed.java
  mibi.segmentation.DeepCellToolbox.DeepWatershed
  mibi.segmentation.DeepCellToolbox.DeepWatershed$Builder
  mibi.segmentation.DeepCellToolbox.DeepWatershed$MaximaAlgorithms
-mibi/segmentation/TensorFlowModelLoadTest.java
- mibi.segmentation.TensorFlowModelLoadTest
-mibi/segmentation/SegmentationGUI.java
- mibi.segmentation.SegmentationGUI
+mibi/MIBIExtension.java
+ mibi.MIBIExtension
+mibi/phenotype/PhenotypeTreeTableViewWrapper.java
+ mibi.phenotype.PhenotypeTreeTableViewWrapper
 mibi/phenotype/PhenotypeHierarchy.java
  mibi.phenotype.PhenotypeHierarchy
  mibi.phenotype.PhenotypeHierarchy$PhenotypeNode
@@ -40,16 +40,16 @@ mibi/phenotype/AstirCellTypeClassifier.java
  mibi.phenotype.AstirCellTypeClassifier
 mibi/phenotype/celltype/TypeRecognitionNet.java
  mibi.phenotype.celltype.TypeRecognitionNet
-mibi/phenotype/PhenotypeTreeTableViewWrapper.java
- mibi.phenotype.PhenotypeTreeTableViewWrapper
-mibi/MIBIExtension.java
- mibi.MIBIExtension
+qupath/opencv/ops/DeepCellImageOps.java
+ qupath.opencv.ops.DeepCellImageOps
+ qupath.opencv.ops.DeepCellImageOps$DeepCellChannelImageDataOp
+mibi/segmentation/SegmentationGUI.java
+ mibi.segmentation.SegmentationGUI
 mibi/segmentation/DeepCell2D.java
  mibi.segmentation.DeepCell2D
  mibi.segmentation.DeepCell2D$Builder
  mibi.segmentation.DeepCell2D$PotentialCell
-qupath/opencv/ops/DeepCellImageOps.java
- qupath.opencv.ops.DeepCellImageOps
- qupath.opencv.ops.DeepCellImageOps$DeepCellChannelImageDataOp
+mibi/segmentation/TensorFlowModelLoadTest.java
+ mibi.segmentation.TensorFlowModelLoadTest
 qupath/opencv/ops/DeepCellPreprocessOp.java
  qupath.opencv.ops.DeepCellPreprocessOp

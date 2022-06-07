@@ -24,7 +24,7 @@ public class DeepCellPreprocessOp implements ImageOp {
     public static DeepCellPreprocessOp preprocess(){
         return new DeepCellPreprocessOp();
     }
-
+    private static final double PRECISION = 0.01;
 
     @Override
     public Mat apply(Mat input) {
@@ -43,21 +43,20 @@ public class DeepCellPreprocessOp implements ImageOp {
             // extract channel
             var mat = matvec.get(c);
 
-
-            var ip = OpenCVTools.matToImageProcessor(mat);
-
-            int width = ip.getWidth();
-            int height = ip.getHeight();
-
-            DescriptiveStatistics ds = new DescriptiveStatistics();
-
-            for (int i=0; i < width; i++){
-                for (int j=0; j < height; j++){
-                    var val = ip.getf(i,j);
-                    if (val > 0 )
-                        ds.addValue(ip.getf(i,j));
-                }
-            }
+//            var ip = OpenCVTools.matToImageProcessor(mat);
+//
+//            int width = ip.getWidth();
+//            int height = ip.getHeight();
+//
+//            DescriptiveStatistics ds = new DescriptiveStatistics();
+//
+//            for (int i=0; i < width; i++){
+//                for (int j=0; j < height; j++){
+//                    var val = ip.getf(i,j);
+//                    if (val > 0 )
+//                        ds.addValue(ip.getf(i,j));
+//                }
+//            }
 
 //            var percentile99dot9 = ds.getPercentile(99.9);
 //            // The 100 is ignored. Does not matter for THRESH_TRUNC
@@ -74,9 +73,13 @@ public class DeepCellPreprocessOp implements ImageOp {
             mat.convertTo(mat, CV_32F);
 
             opencv_core.minMaxLoc(mat, min, max, null, null, null);
-            mat.convertTo(mat, mat.type(), 1 / (max.get()), 0);
-
-//            opencv_imgproc.GaussianBlur(mat, mat, new Size(0,0), 1, 1, BORDER_REFLECT);
+            if (Math.abs(min.get() - max.get()) < PRECISION) {
+                var zeroMat = new Mat(mat.rows(), mat.cols(), mat.type(), new Scalar(0));
+                zeroMat.copyTo(mat);
+            }
+            else {
+                mat.convertTo(mat, mat.type(), 1 / (max.get() - min.get()), -1 * min.get() / (max.get() - min.get()));
+            }
 
             matvec.put(c, mat);
         }

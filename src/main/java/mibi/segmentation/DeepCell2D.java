@@ -109,7 +109,6 @@ public class DeepCell2D {
     private static int iter=0;
 
 
-
     /**
      * Detect cells within one or more parent objects, firing update events upon completion.
      *
@@ -917,6 +916,10 @@ public class DeepCell2D {
             return this;
         }
 
+        public Builder normalizePercentiles(double min, double max){
+            this.ops.add(ImageOps.Normalize.percentile(min, max));
+            return this;
+        }
 
 
         /**
@@ -1170,7 +1173,7 @@ public class DeepCell2D {
 
 
             mergedOps.add(ImageOps.Core.ensureType(PixelType.FLOAT32));
-//            mergedOps.add(DeepCellPreprocessOp.preprocess());
+            mergedOps.add(DeepCellPreprocessOp.preprocess());
             // ImageOps.buildImageDataOp(channels) is the operation to extract the channels
             // Also includes any other image operations the user has specified
 
@@ -1182,12 +1185,8 @@ public class DeepCell2D {
                 throw new RuntimeException("Please select a nuclei channel!");
             }
 
-            try{
-                deepCell2D.op = DeepCellImageOps.buildImageDataOps(imageData, nucleiChannel, membraneChannels)
-                        .appendOps(mergedOps.toArray(ImageOp[]::new));
-            } catch(IOException e) {
-                e.printStackTrace();
-            }
+            deepCell2D.op = DeepCellImageOps.buildImageDataOps(nucleiChannel, membraneChannels)
+                    .appendOps(mergedOps.toArray(ImageOp[]::new));
 
             deepCell2D.dnn = dnn;
             deepCell2D.pixelSize = pixelSize;
