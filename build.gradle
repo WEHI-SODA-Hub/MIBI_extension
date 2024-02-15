@@ -1,9 +1,9 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'org.bytedeco.gradle-javacpp-platform' version '1.5.7-SNAPSHOT'
+    id 'org.bytedeco.gradle-javacpp-platform' version '1.5.10'
     id 'com.github.johnrengelman.shadow' version '7.0.0'
-//    id 'org.bytedeco.gradle-javacpp-build' version '1.5.6'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 
@@ -15,24 +15,26 @@ allprojects {
         mavenCentral()
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
         maven { url "https://maven.scijava.org/content/repositories/releases"}
-//        maven { url "https://jitpack.io" }
+        maven { url "https://jitpack.io" }
     }
 }
 
 dependencies {
 
     shadow "fr.inra.ijpb:MorphoLibJ_:1.4.0"
-//    shadow 'org.bytedeco:gradle-javacpp:1.5.6'
 
-//    implementation "com.github.qupath:qupath-extension-tensorflow:0.3.0"
+    implementation "com.github.qupath:qupath-extension-tensorflow:v0.3.0-rc2"
 
-    shadow files("/Users/yokote.k/QuPath/v0.3/oldExtensions/qupath-extension-tensorflow-0.3.0.jar")
-    implementation 'org.bytedeco:javacv-platform:1.5.7-SNAPSHOT'
+    implementation 'io.github.qupath:qupath-extension-processing:0.5.0'
+    implementation 'io.github.qupath:qupath-extension-djl:0.3.0'
+    implementation 'io.github.qupath:qupath-gui-fx:0.5.0'
+
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'org.bytedeco:javacv-platform:1.5.10'
 //    shadow 'org.bytedeco:javacpp:1.5.5'
     implementation 'org.bytedeco:javacpp-presets-platform:1.5.5'
     shadow 'org.tensorflow:tensorflow-core-platform:0.4.0'
 
-    implementation fileTree(dir: '/Users/yokote.k/Desktop/QuPath-0.3.0.app/Contents/app/', include: '*.jar')
     String javaFxVersion = '11'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'win'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'mac'
@@ -47,6 +49,8 @@ dependencies {
     implementation group: 'org.openjfx', name: 'javafx-graphics', version: javaFxVersion, classifier: 'mac'
     implementation group: 'org.openjfx', name: 'javafx-graphics', version: javaFxVersion, classifier: 'linux'
 
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
 }
 
 
@@ -60,14 +64,14 @@ shadowJar{
 }
 //mainClassName = "mibi.MIBIExtension"
 
-//jar {
-//
-//    manifest {
-//        attributes 'Main-Class' : 'mibi.MIBIExtension'
-//        attributes 'Implementation-Title': 'MIBI Extension',
-//                'Implementation-Version': '0.0.1'
-//    }
-//
-//    destinationDirectory = file("$rootDir/output")
-//    archiveName 'qupath-MIBI-extension.jar'
-//}
+jar {
+
+   manifest {
+       attributes 'Main-Class' : 'mibi.MIBIExtension'
+       attributes 'Implementation-Title': 'MIBI Extension',
+               'Implementation-Version': '0.0.1'
+   }
+
+   destinationDirectory = file("$rootDir/output")
+   archiveBaseName = 'qupath-MIBI-extension'
+}

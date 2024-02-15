@@ -42,7 +42,6 @@ public class DeepCellImageOps {
             this.nucleiChannel = nucleiChannel;
         }
 
-
         /**
          * Extracts the nuclei channel from the image and concatenates the membrane channels by element-wise
          * multiplication.
@@ -153,8 +152,14 @@ public class DeepCellImageOps {
 
         // Not used
         @Override
-        public boolean updateUris(Map<URI, URI> map) throws IOException {
+        public boolean updateURIs(Map<URI, URI> map) throws IOException {
             return false;
+        }
+
+        @Override
+        public Collection<URI> getURIs() throws IOException {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'getURIs'");
         }
     }
 

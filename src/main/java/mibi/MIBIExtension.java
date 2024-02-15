@@ -6,7 +6,7 @@ import mibi.stitch.GridStitchGUI;
 
 
 import org.controlsfx.control.action.Action;
-import qupath.lib.gui.ActionTools;
+import qupath.lib.gui.actions.ActionTools;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.extensions.QuPathExtension;
 import qupath.lib.gui.tools.MenuTools;
