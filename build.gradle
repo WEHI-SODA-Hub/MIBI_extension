@@ -20,18 +20,14 @@ allprojects {
 }
 
 dependencies {
-
     shadow "fr.inra.ijpb:MorphoLibJ_:1.4.0"
 
     implementation "com.github.qupath:qupath-extension-tensorflow:v0.3.0-rc2"
-
     implementation 'io.github.qupath:qupath-extension-processing:0.5.0'
-    implementation 'io.github.qupath:qupath-extension-djl:0.3.0'
     implementation 'io.github.qupath:qupath-gui-fx:0.5.0'
 
     implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation 'org.bytedeco:javacv-platform:1.5.10'
-//    shadow 'org.bytedeco:javacpp:1.5.5'
     implementation 'org.bytedeco:javacpp-presets-platform:1.5.5'
     shadow 'org.tensorflow:tensorflow-core-platform:0.4.0'
 
