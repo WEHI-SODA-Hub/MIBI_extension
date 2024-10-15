@@ -5,7 +5,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import mibi.segmentation.DeepCell2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import qupath.lib.analysis.features.AdditionalObjectMeasurements;
