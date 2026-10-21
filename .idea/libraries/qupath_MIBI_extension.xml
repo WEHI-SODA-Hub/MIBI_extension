@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="qupath-MIBI-extension">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/output/qupath-MIBI-extension.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

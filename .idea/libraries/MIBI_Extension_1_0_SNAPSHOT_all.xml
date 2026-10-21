@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="MIBI_Extension-1.0-SNAPSHOT-all">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/build/libs/MIBI_Extension-1.0-SNAPSHOT-all.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
