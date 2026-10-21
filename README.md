@@ -1,6 +1,6 @@
 # MIBI extension
 
-A QuPath 0.3 extension for analysing MIBI (multiplexed ion beam imaging) data. It adds an
+A QuPath 0.3.2 extension for analysing MIBI (multiplexed ion beam imaging) data. It adds an
 **Extensions > MIBI Extension** menu with three tools.
 
 | Menu item | What it does |
@@ -26,23 +26,23 @@ For each tile, `DeepCell2D`:
 
 ## Building
 
-Requirements: a JDK (the build uses JavaFX 11), a QuPath 0.3.0 installation, and the QuPath TensorFlow extension
+Requirements: a JDK (the build uses JavaFX 11), a QuPath 0.3.2 installation, and the QuPath TensorFlow extension
 jar for 0.3.0 (`qupath-extension-tensorflow-0.3.0.jar`).
 
 The build needs two properties that point at those files. Set them in `~/.gradle/gradle.properties`:
 
 ```
-qupathAppDir=/path/to/QuPath-0.3.0/app
+qupathAppDir=/path/to/QuPath-0.3.2/app
 qupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
 ```
 
 or pass them on the command line:
 
 ```
-./gradlew shadowJar -PqupathAppDir=/path/to/QuPath-0.3.0/app -PqupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
+./gradlew shadowJar -PqupathAppDir=/path/to/QuPath-0.3.2/app -PqupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
 ```
 
-`qupathAppDir` is the folder that contains the QuPath jars (`QuPath-0.3.0.app/Contents/app` on macOS).
+`qupathAppDir` is the folder that contains the QuPath jars (`QuPath-0.3.2.app/Contents/app` on macOS).
 The build fails with a message if either property is missing.
 
 The extension jar is written to `build/libs`. Copy it into QuPath's extensions folder together with

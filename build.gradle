@@ -20,11 +20,11 @@ allprojects {
 }
 
 // Machine-specific locations. Set these in ~/.gradle/gradle.properties or pass them with -P, e.g.
-//   ./gradlew shadowJar -PqupathAppDir=/path/to/QuPath-0.3.0/app -PqupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
+//   ./gradlew shadowJar -PqupathAppDir=/path/to/QuPath-0.3.2/app -PqupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
 def qupathAppDir = findProperty('qupathAppDir')
 def qupathTensorflowJar = findProperty('qupathTensorflowJar')
 if (qupathAppDir == null || qupathTensorflowJar == null) {
-    throw new GradleException('Set the qupathAppDir (folder containing the QuPath 0.3.0 jars) and ' +
+    throw new GradleException('Set the qupathAppDir (folder containing the QuPath 0.3.2 jars) and ' +
             'qupathTensorflowJar (qupath-extension-tensorflow-0.3.0.jar) Gradle properties. See README.md.')
 }
 
