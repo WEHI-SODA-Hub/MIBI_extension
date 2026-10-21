@@ -30,9 +30,6 @@
 //public class TensorFlowTest {
 //
 //    public static void main(String[] args) throws IOException {
-//        String modelPath = "/Users/yokote.k/Desktop/MIBI/MultiplexSegmentation";
-//        String projectPath = "/Users/yokote.k/Desktop/MIBI/Test_proj";
-//        String imagePath = "/Users/yokote.k/Desktop/MIBI/images/Stack_dna-mem-channels.tif";
 //
 //
 //        File multiplexModel = new File(new File(new File(new File("src", "main"),

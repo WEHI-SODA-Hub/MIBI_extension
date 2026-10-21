@@ -11,7 +11,7 @@ public class TestGridStitchMacroOptions {
     public static void main(String[] args) {
         GridStitchMacroOptions gs = new GridStitchMacroOptions();
 
-        gs.setDirectory(new File("/Users/yokote.k/Desktop/test_stitch/images"));
+        gs.setDirectory(new File(args.length > 0 ? args[0] : "test_stitch/images"));
         gs.setFilenamesRegex("test_image{i}.tif");
         gs.setWidth(1);
         gs.setHeight(2);

@@ -5,7 +5,6 @@ import ij.process.ImageProcessor;
 import mibi.segmentation.DeepCellToolbox.DeepWatershed;
 import org.bytedeco.javacpp.PointerScope;
 import org.bytedeco.opencv.global.opencv_core;
-import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
@@ -54,7 +53,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.bytedeco.opencv.global.opencv_core.extractChannel;
 
 //TODO: add in logger
 //TODO: Ignore pooling for now. Focus on getting a working output.
@@ -65,9 +63,6 @@ import static org.bytedeco.opencv.global.opencv_core.extractChannel;
 public class DeepCell2D {
     private final static Logger logger = LoggerFactory.getLogger(DeepCell2D.class);
     private static final String signature = "serving_default";
-
-    private static String[] pathNames = { "src", "main", "resources", "model", "MultiplexSegmentation" };
-    private final String modelPath = new File(String.join(File.pathSeparator, pathNames)).getAbsolutePath();
 
     private SignatureDef signatureDef;
     private TensorInfo inputTensorInfo;
@@ -228,7 +223,7 @@ public class DeepCell2D {
             resolution = resolution.createScaledInstance(downsample, downsample);
         }
         int tw = tileWidth <= 0 ? defaultTileSize : tileWidth;
-        int th = tileHeight <= 0 ? defaultTileSize : tileWidth;
+        int th = tileHeight <= 0 ? defaultTileSize : tileHeight;
 
         // applies any of the image operations to get the ROI
         var opServer = ImageOps.buildServer(
@@ -356,7 +351,7 @@ public class DeepCell2D {
         if (Thread.currentThread().isInterrupted())
             cancelRuns = true;
         if (cancelRuns)
-            Collections.emptyList();
+            return Collections.emptyList();
 
         // List of potential Nuclei
         List<PotentialCell> nuclei;
@@ -395,17 +390,6 @@ public class DeepCell2D {
             // Ensure we have a Mat of the right size. If not, create a padding around to make a mat of the correct size
             var padding = ensureSize(mat, tileWidth, tileHeight, opencv_core.BORDER_REFLECT);
 
-            Mat nucChannel = new Mat();
-            extractChannel(mat, nucChannel, 0);
-
-            String path00 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_dna_input_" + requestPadded.getX()+ "_"+requestPadded.getY() + ".tif";
-            opencv_imgcodecs.imwrite(path00, nucChannel);
-
-            Mat memChannel = new Mat();
-            extractChannel(mat, memChannel, 1);
-            String path11 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_mem_input_" + requestPadded.getX()+ "_"+requestPadded.getY()+ ".tif";
-            opencv_imgcodecs.imwrite(path11, memChannel);
-
             // Convert the mat to a tensor
             var input = TensorFlowTools.convertToTensor(mat);
             // Start a session.
@@ -424,13 +408,6 @@ public class DeepCell2D {
 
 
             var formattedOutput = formatOutput(output);
-            String path1 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole_" + requestPadded.getX()+ "_"+requestPadded.getY() + ".tif";
-            opencv_imgcodecs.imwrite(path1, formattedOutput.get("whole-cell").get(0));
-
-            String path2 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc_" + requestPadded.getX()+ "_"+requestPadded.getY()+ ".tif";
-            opencv_imgcodecs.imwrite(path2, formattedOutput.get("nuclear").get(0));
-
-
             Mat matCell = new Mat();
             Mat matNuclear = new Mat();
             postProcess(formattedOutput, matCell, matNuclear);
@@ -519,12 +496,6 @@ public class DeepCell2D {
 
         cropImage(cellLabels, croppedCell, padding);
         cropImage(nucleiLabels, croppedNuclei, padding);
-
-//        String path3 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_whole_lab_crop_" + request.getX()+ "_"+request.getY() + ".tif";
-//        opencv_imgcodecs.imwrite(path3, croppedCell);
-//
-//        String path4 = "/Users/yokote.k/Desktop/MIBI/model_output/uk_cohort_check_nuc_lab_crop_" + request.getX()+ "_"+request.getY()+ ".tif";
-//        opencv_imgcodecs.imwrite(path4, croppedNuclei);
 
         var pathImage = IJTools.convertToImagePlus(server, request);
         ImageProcessor cellProcessor = DeepWatershed.toImageProcessor(croppedCell);

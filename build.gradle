@@ -8,7 +8,7 @@ plugins {
 
 
 group 'com.github.qupath'
-version '1.0-SNAPSHOT-Mac'
+version '1.0-SNAPSHOT'
 
 allprojects {
     repositories {
@@ -19,6 +19,15 @@ allprojects {
     }
 }
 
+// Machine-specific locations. Set these in ~/.gradle/gradle.properties or pass them with -P, e.g.
+//   ./gradlew shadowJar -PqupathAppDir=/path/to/QuPath-0.3.0/app -PqupathTensorflowJar=/path/to/qupath-extension-tensorflow-0.3.0.jar
+def qupathAppDir = findProperty('qupathAppDir')
+def qupathTensorflowJar = findProperty('qupathTensorflowJar')
+if (qupathAppDir == null || qupathTensorflowJar == null) {
+    throw new GradleException('Set the qupathAppDir (folder containing the QuPath 0.3.0 jars) and ' +
+            'qupathTensorflowJar (qupath-extension-tensorflow-0.3.0.jar) Gradle properties. See README.md.')
+}
+
 dependencies {
 
     shadow "fr.inra.ijpb:MorphoLibJ_:1.4.0"
@@ -26,13 +35,13 @@ dependencies {
 
 //    implementation "com.github.qupath:qupath-extension-tensorflow:0.3.0"
 
-    shadow files("/Users/yokote.k/QuPath/v0.3/oldExtensions/qupath-extension-tensorflow-0.3.0.jar")
+    shadow files(qupathTensorflowJar)
     implementation 'org.bytedeco:javacv-platform:1.5.7-SNAPSHOT'
 //    shadow 'org.bytedeco:javacpp:1.5.5'
     implementation 'org.bytedeco:javacpp-presets-platform:1.5.5'
     shadow 'org.tensorflow:tensorflow-core-platform:0.4.0'
 
-    implementation fileTree(dir: '/Users/yokote.k/Desktop/QuPath-0.3.0.app/Contents/app/', include: '*.jar')
+    implementation fileTree(dir: qupathAppDir, include: '*.jar')
     String javaFxVersion = '11'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'win'
     implementation group: 'org.openjfx', name: 'javafx-base', version: javaFxVersion, classifier: 'mac'
