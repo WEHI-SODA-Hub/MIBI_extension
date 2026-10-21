@@ -16,7 +16,7 @@ A QuPath 0.3.2 extension for analysing MIBI (multiplexed ion beam imaging) data.
 | Segmentation | Segments nuclei and whole cells with the DeepCell Mesmer model (a TensorFlow SavedModel) and adds shape, intensity and percentile measurements. Runs on the selected annotations, or on every image in the project. |
 | Quantile | Adds percentile intensity measurements to cells that already exist, for every image in the project. |
 
-The Mesmer model is in `src/main/resources/model/MultiplexSegmentation`.
+The Mesmer model is not included in this repository; see [Mesmer model](#mesmer-model).
 The code in `mibi/phenotype` (`AstirCellTypeClassifier`, `SCDataset`, `TypeRecognitionNet`, `PhenotypeHierarchy`)
 is an unfinished start on an ASTIR-style cell-type classifier. It is not in the menu and does not classify anything.
 
@@ -97,8 +97,8 @@ Notes:
 
    The `shadowJar` build bundles MorphoLibJ, the TensorFlow extension and `tensorflow-core-platform` (all operating systems) into one jar.
 3. Restart QuPath. **Extensions > MIBI Extension** should list Stitching, Segmentation and Quantile.
-4. Keep the model folder (`src/main/resources/model/MultiplexSegmentation`, containing `saved_model.pb` and `variables/`)
-   somewhere on disk. The Segmentation window asks for this folder.
+4. Download the Mesmer model (see [Mesmer model](#mesmer-model)). The Segmentation window asks for the
+   `MultiplexSegmentation` folder, which contains `saved_model.pb` and `variables/`.
 
 Starting QuPath on Java 17 or later needs `--add-opens java.base/java.lang=ALL-UNNAMED`, which TensorFlow's native
 loader uses. QuPath 0.3.2's own launcher sets `--illegal-access=permit`.
@@ -175,6 +175,35 @@ cell in every project image, and saves each image.
 - There are no automated tests of the segmentation. The files in `src/test` are small manual launchers.
 - Only QuPath 0.3.2 and the Linux load check described above have been tried since the code was moved to this
   repository.
+
+## Mesmer model
+
+The model weights are not in this repository. They are distributed by the DeepCell project under the DeepCell
+licence (non-commercial use), and downloading them needs an access token, which DeepCell issues on approval
+(https://users.deepcell.org).
+
+We used DeepCell's `MultiplexSegmentation-9` model. To download it, install `deepcell` (deepcell-tf), set
+`DEEPCELL_ACCESS_TOKEN` to your token, and run:
+
+```
+python -c "from deepcell.applications import Mesmer; Mesmer()"
+```
+
+This downloads `MultiplexSegmentation-9.tar.gz` to `~/.deepcell/models/` and unpacks it to
+`~/.deepcell/models/MultiplexSegmentation`. Select that folder as **Model folder** in the Segmentation window.
+
+md5 checksums of the model we used:
+
+| File | md5 |
+|------|-----|
+| `MultiplexSegmentation-9.tar.gz` | `a1dfbce2594f927b9112f23a0a1739e0` |
+| `saved_model.pb` | `4fe357bfb96bc9c95798cf20298f0093` |
+| `keras_metadata.pb` | `b55858b9ee57d2cf85c43b37c28efd23` |
+| `variables/variables.data-00000-of-00001` | `44405333b7896a00f5e899df841ed8bc` |
+| `variables/variables.index` | `02cd54fbe99908a6f3f912a5c4dfa541` |
+
+Earlier versions of this repository contained a copy of an older Mesmer model in
+`src/main/resources/model/MultiplexSegmentation`. It was removed from the whole history on 2026-10-22.
 
 ## License
 
